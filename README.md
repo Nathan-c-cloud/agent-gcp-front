@@ -57,7 +57,7 @@ firebase init
 
 Sélectionnez :
 - **Hosting** : Configure files for Firebase Hosting
-- Choisissez un projet Firebase existant ou créez-en un nouveau
+- Choisissez un projet Firebase existant 
 - **Public directory** : `build` (déjà configuré dans firebase.json)
 - **Configure as a single-page app** : `Yes`
 - **Set up automatic builds and deploys with GitHub** : `No` (ou `Yes` si vous le souhaitez)
