@@ -189,7 +189,7 @@ export function Settings() {
         </div>
 
         <Tabs defaultValue="company" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white rounded-2xl p-2 shadow-lg">
+          <TabsList className="!grid w-full grid-cols-5 bg-white rounded-2xl p-2 shadow-lg">
             <TabsTrigger
               value="company"
               className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white transition-all"
