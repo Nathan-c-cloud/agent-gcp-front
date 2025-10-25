@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -10,10 +10,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Building2, User, Bell, Sparkles, Save, CheckCircle, Settings as SettingsIcon, Plug } from 'lucide-react';
 import { toast } from 'sonner';
+// AJOUTER ces imports
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { RefreshCw, AlertCircle } from 'lucide-react';
+import {
+  getIntegrations,
+  connectIntegration,
+  disconnectIntegration,
+  testIntegration,
+  type Integration,
+  type ConnectionCredentials
+} from '../services/integrationService';
 
 export function Settings() {
   const [isSaving, setIsSaving] = useState(false);
-  
+
+
   // Informations entreprise
   const [companyInfo, setCompanyInfo] = useState({
     nom: "SARL TechCorp",
@@ -57,16 +69,20 @@ export function Settings() {
     domainesPrioritaires: ["fiscalite", "aides", "social"]
   });
 
-  // Intégrations
-  const [integrations] = useState([
-    { id: 'payfit', name: 'PayFit', description: 'Gestion de la paie', status: 'connected', icon: '✅' },
-    { id: 'odoo', name: 'Odoo', description: 'ERP & Comptabilité', status: 'configuring', icon: '⚙️' },
-    { id: 'quickbooks', name: 'QuickBooks', description: 'Comptabilité', status: 'disconnected', icon: '🔴' }
-  ]);
+
+  // Intégrations - État dynamique depuis le backend
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [isLoadingIntegrations, setIsLoadingIntegrations] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedSaas, setSelectedSaas] = useState<string>('');
+  const [connectionForm, setConnectionForm] = useState<ConnectionCredentials>({});
+
+  const userId = "test_user";
+  const companyId = "Demo Company";
 
   const handleSave = () => {
     setIsSaving(true);
-    
+
     // Simuler une sauvegarde
     setTimeout(() => {
       setIsSaving(false);
@@ -75,6 +91,83 @@ export function Settings() {
         duration: 3000,
       });
     }, 1000);
+
+  };
+
+  // Charger les intégrations
+  useEffect(() => {
+    loadIntegrations();
+    const interval = setInterval(loadIntegrations, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadIntegrations = async () => {
+    setIsLoadingIntegrations(true);
+    try {
+      const data = await getIntegrations(userId, companyId);
+      setIntegrations(data);
+    } catch (error) {
+      console.error('Error loading integrations:', error);
+    } finally {
+      setIsLoadingIntegrations(false);
+    }
+  };
+
+  const handleConnectIntegration = async () => {
+    if (!selectedSaas) {
+      toast.error('Veuillez sélectionner une intégration');
+      return;
+    }
+
+    try {
+      const result = await connectIntegration(
+        selectedSaas,
+        connectionForm,
+        userId,
+        companyId
+      );
+
+      if (result.success) {
+        toast.success(result.message || 'Intégration connectée avec succès !');
+        await loadIntegrations();
+        setIsAddDialogOpen(false);
+        setConnectionForm({});
+        setSelectedSaas('');
+      } else {
+        toast.error(result.message || 'Échec de la connexion');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la connexion');
+    }
+  };
+
+  const handleDisconnectIntegration = async (saasId: string, saasName: string) => {
+    if (!confirm(`Êtes-vous sûr de vouloir déconnecter ${saasName} ?`)) return;
+
+    try {
+      const result = await disconnectIntegration(saasId, userId, companyId);
+      if (result.success) {
+        toast.success(`${saasName} déconnecté`);
+        await loadIntegrations();
+      } else {
+        toast.error('Échec de la déconnexion');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la déconnexion');
+    }
+  };
+
+  const handleTestIntegration = async (saasId: string, saasName: string) => {
+    try {
+      const result = await testIntegration(saasId, userId, companyId);
+      if (result.success) {
+        toast.success(`${saasName} : Connexion OK ✅`);
+      } else {
+        toast.error(`${saasName} : Connexion échouée ❌`);
+      }
+    } catch (error) {
+      toast.error('Erreur lors du test');
+    }
   };
 
   return (
@@ -82,7 +175,7 @@ export function Settings() {
       {/* Background elements */}
       <div className="absolute top-20 right-40 w-72 h-72 bg-purple-400/10 rounded-full blur-3xl" />
       <div className="absolute bottom-40 left-20 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl" />
-      
+
       <div className="max-w-5xl mx-auto space-y-8 relative">
         <div>
           <div className="flex items-center gap-3 mb-3">
@@ -97,36 +190,36 @@ export function Settings() {
 
         <Tabs defaultValue="company" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 bg-white rounded-2xl p-2 shadow-lg">
-            <TabsTrigger 
-              value="company" 
+            <TabsTrigger
+              value="company"
               className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white transition-all"
             >
               <Building2 className="size-4 mr-2" />
               Entreprise
             </TabsTrigger>
-            <TabsTrigger 
-              value="user" 
+            <TabsTrigger
+              value="user"
               className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all"
             >
               <User className="size-4 mr-2" />
               Représentant
             </TabsTrigger>
-            <TabsTrigger 
-              value="notifications" 
+            <TabsTrigger
+              value="notifications"
               className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-500 data-[state=active]:to-orange-500 data-[state=active]:text-white transition-all"
             >
               <Bell className="size-4 mr-2" />
               Notifications
             </TabsTrigger>
-            <TabsTrigger 
-              value="integrations" 
+            <TabsTrigger
+              value="integrations"
               className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white transition-all"
             >
               <Plug className="size-4 mr-2" />
               Intégrations
             </TabsTrigger>
-            <TabsTrigger 
-              value="ai" 
+            <TabsTrigger
+              value="ai"
               className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white transition-all"
             >
               <Sparkles className="size-4 mr-2" />
@@ -136,8 +229,8 @@ export function Settings() {
 
           {/* ONGLET ENTREPRISE */}
           <TabsContent value="company" className="space-y-6">
-            <Card 
-              className="p-8 bg-white rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group" 
+            <Card
+              className="p-8 bg-white rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group"
               style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
             >
               <div className="flex items-center gap-3 mb-6">
@@ -146,7 +239,7 @@ export function Settings() {
                 </div>
                 <h3 className="tracking-tight">Informations générales</h3>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="nom">Nom de l'entreprise</Label>
@@ -232,8 +325,8 @@ export function Settings() {
               </div>
             </Card>
 
-            <Card 
-              className="p-8 bg-gradient-to-br from-white to-blue-50/30 rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group" 
+            <Card
+              className="p-8 bg-gradient-to-br from-white to-blue-50/30 rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group"
               style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
             >
               <div className="flex items-center gap-3 mb-6">
@@ -242,7 +335,7 @@ export function Settings() {
                 </div>
                 <h3 className="tracking-tight">Activité</h3>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="secteurActivite">Secteur d'activité</Label>
@@ -328,8 +421,8 @@ export function Settings() {
 
           {/* ONGLET REPRÉSENTANT */}
           <TabsContent value="user" className="space-y-6">
-            <Card 
-              className="p-8 bg-white rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group" 
+            <Card
+              className="p-8 bg-white rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group"
               style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
             >
               <div className="flex items-center gap-3 mb-6">
@@ -338,7 +431,7 @@ export function Settings() {
                 </div>
                 <h3 className="tracking-tight">Informations du représentant légal</h3>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="prenom">Prénom</Label>
@@ -397,8 +490,8 @@ export function Settings() {
 
           {/* ONGLET NOTIFICATIONS */}
           <TabsContent value="notifications" className="space-y-6">
-            <Card 
-              className="p-8 bg-gradient-to-br from-white to-yellow-50/30 rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group" 
+            <Card
+              className="p-8 bg-gradient-to-br from-white to-yellow-50/30 rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group"
               style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
             >
               <div className="flex items-center gap-3 mb-6">
@@ -407,7 +500,7 @@ export function Settings() {
                 </div>
                 <h3 className="tracking-tight">Types d'alertes</h3>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 rounded-xl hover:bg-white/50 transition-colors">
                   <div className="space-y-0.5">
@@ -479,8 +572,8 @@ export function Settings() {
               </div>
             </Card>
 
-            <Card 
-              className="p-8 bg-white rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group" 
+            <Card
+              className="p-8 bg-white rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group"
               style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
             >
               <div className="flex items-center gap-3 mb-6">
@@ -489,7 +582,7 @@ export function Settings() {
                 </div>
                 <h3 className="tracking-tight">Canaux de communication</h3>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-50 transition-colors">
                   <div className="space-y-0.5">
@@ -521,28 +614,43 @@ export function Settings() {
           </TabsContent>
 
           {/* ONGLET INTÉGRATIONS */}
+          {/* ONGLET INTÉGRATIONS - VERSION DYNAMIQUE */}
           <TabsContent value="integrations" className="space-y-6">
-            <Card 
-              className="p-8 bg-white rounded-2xl hover:shadow-xl transition-all duration-300 border-0" 
+            <Card
+              className="p-8 bg-white rounded-2xl hover:shadow-xl transition-all duration-300 border-0"
               style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
             >
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 rounded-xl bg-green-100 shadow-lg">
-                  <Plug className="size-6 text-green-600" />
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-green-100 shadow-lg">
+                    <Plug className="size-6 text-green-600" />
+                  </div>
+                  <h3 className="tracking-tight">Intégrations</h3>
                 </div>
-                <h3 className="tracking-tight">Intégrations</h3>
+
+                {/* Bouton refresh */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadIntegrations}
+                  disabled={isLoadingIntegrations}
+                  className="rounded-xl"
+                >
+                  <RefreshCw className={`size-4 mr-2 ${isLoadingIntegrations ? 'animate-spin' : ''}`} />
+                  Actualiser
+                </Button>
               </div>
-              
+
               <div className="space-y-4">
                 {integrations.map((integration) => (
-                  <div 
+                  <div
                     key={integration.id}
-                    className={`flex items-center justify-between p-5 border-0 rounded-2xl hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group shadow-soft
+                    className={`flex items-center justify-between p-5 border-0 rounded-2xl hover:shadow-md transition-all group shadow-soft
                       ${integration.status === 'connected' ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 
                         integration.status === 'configuring' ? 'bg-gradient-to-r from-orange-50 to-amber-50' : 
                         'bg-white border border-gray-200'}`}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-1">
                       <div className={`size-14 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg
                         ${integration.status === 'connected' ? 'bg-green-100' : 
                           integration.status === 'configuring' ? 'bg-orange-100' : 
@@ -552,36 +660,205 @@ export function Settings() {
                         {integration.status === 'configuring' && <SettingsIcon className="size-7 text-orange-600 animate-spin-slow" />}
                         {integration.status === 'disconnected' && <Plug className="size-7 text-gray-600" />}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="font-semibold text-lg">{integration.name}</p>
                         <p className="text-sm text-muted-foreground font-medium">{integration.description}</p>
+                        {integration.connectedAt && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Connecté le {new Date(integration.connectedAt).toLocaleDateString('fr-FR')}
+                          </p>
+                        )}
                       </div>
                     </div>
-                    <Badge 
-                      className={`shadow-md font-semibold
-                        ${integration.status === 'connected' ? 'bg-green-500 text-white' : 
-                          integration.status === 'configuring' ? 'bg-orange-500 text-white' : 
-                          'bg-gray-200 text-gray-700'}`}
-                    >
-                      {integration.status === 'connected' && `Connecté ${integration.icon}`}
-                      {integration.status === 'configuring' && `En configuration ${integration.icon}`}
-                      {integration.status === 'disconnected' && `Non connecté ${integration.icon}`}
-                    </Badge>
+
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className={`shadow-md font-semibold
+                          ${integration.status === 'connected' ? 'bg-green-500 text-white' : 
+                            integration.status === 'configuring' ? 'bg-orange-500 text-white' : 
+                            'bg-gray-200 text-gray-700'}`}
+                      >
+                        {integration.status === 'connected' && `Connecté ${integration.icon}`}
+                        {integration.status === 'configuring' && `En configuration ${integration.icon}`}
+                        {integration.status === 'disconnected' && `Non connecté ${integration.icon}`}
+                      </Badge>
+
+                      {integration.status === 'connected' && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleTestIntegration(integration.id, integration.name)}
+                            className="rounded-xl"
+                          >
+                            Tester
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDisconnectIntegration(integration.id, integration.name)}
+                            className="rounded-xl text-red-600 hover:text-red-700"
+                          >
+                            Déconnecter
+                          </Button>
+                        </>
+                      )}
+
+                      {integration.status === 'disconnected' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedSaas(integration.id);
+                            setIsAddDialogOpen(true);
+                          }}
+                          className="rounded-xl"
+                        >
+                          Connecter
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
 
-                <Button variant="outline" className="w-full mt-4 rounded-xl hover:shadow-md hover:scale-[1.02] transition-all py-6 font-semibold border-dashed border-2 hover:bg-blue-50 hover:border-blue-300">
-                  <Sparkles className="size-5 mr-2" />
-                  Ajouter une intégration
-                </Button>
+                {/* Dialog pour ajouter/connecter une intégration */}
+                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full mt-4 rounded-xl hover:shadow-md hover:scale-[1.02] transition-all py-6 font-semibold border-dashed border-2 hover:bg-blue-50 hover:border-blue-300"
+                    >
+                      <Sparkles className="size-5 mr-2" />
+                      Ajouter une intégration
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                      <DialogTitle>
+                        Connecter {selectedSaas === 'odoo' ? 'Odoo' : selectedSaas === 'payfit' ? 'PayFit' : 'QuickBooks'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Entrez vos informations de connexion pour intégrer {selectedSaas}.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                      {selectedSaas === 'odoo' && (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="instance_url">URL de l'instance</Label>
+                            <Input
+                              id="instance_url"
+                              placeholder="https://votre-entreprise.odoo.com"
+                              value={connectionForm.instance_url || ''}
+                              onChange={(e) => setConnectionForm({ ...connectionForm, instance_url: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="database">Base de données</Label>
+                            <Input
+                              id="database"
+                              placeholder="production"
+                              value={connectionForm.database || ''}
+                              onChange={(e) => setConnectionForm({ ...connectionForm, database: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="username">Email / Username</Label>
+                            <Input
+                              id="username"
+                              type="email"
+                              placeholder="jean@entreprise.fr"
+                              value={connectionForm.username || ''}
+                              onChange={(e) => setConnectionForm({ ...connectionForm, username: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="api_key">API Key</Label>
+                            <Input
+                              id="api_key"
+                              type="password"
+                              placeholder="Votre API Key Odoo"
+                              value={connectionForm.api_key || ''}
+                              onChange={(e) => setConnectionForm({ ...connectionForm, api_key: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+                            <AlertCircle className="size-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <p className="text-sm text-blue-900">
+                              <strong>Astuce :</strong> Générez une API Key dans Odoo → Préférences → Sécurité du compte
+                            </p>
+                          </div>
+                        </>
+                      )}
+
+                      {selectedSaas === 'payfit' && (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="payfit_api_key">API Key PayFit</Label>
+                            <Input
+                              id="payfit_api_key"
+                              type="password"
+                              placeholder="pk_..."
+                              value={connectionForm.payfit_api_key || ''}
+                              onChange={(e) => setConnectionForm({ ...connectionForm, payfit_api_key: e.target.value })}
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {selectedSaas === 'quickbooks' && (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="client_id">Client ID</Label>
+                            <Input
+                              id="client_id"
+                              placeholder="Votre Client ID"
+                              value={connectionForm.client_id || ''}
+                              onChange={(e) => setConnectionForm({ ...connectionForm, client_id: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="client_secret">Client Secret</Label>
+                            <Input
+                              id="client_secret"
+                              type="password"
+                              placeholder="Votre Client Secret"
+                              value={connectionForm.client_secret || ''}
+                              onChange={(e) => setConnectionForm({ ...connectionForm, client_secret: e.target.value })}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsAddDialogOpen(false);
+                          setConnectionForm({});
+                        }}
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        onClick={handleConnectIntegration}
+                        className="bg-gradient-to-r from-green-500 to-emerald-600"
+                      >
+                        Connecter
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </Card>
           </TabsContent>
 
           {/* ONGLET ASSISTANT IA */}
           <TabsContent value="ai" className="space-y-6">
-            <Card 
-              className="p-8 bg-gradient-to-br from-white to-purple-50/30 rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group" 
+            <Card
+              className="p-8 bg-gradient-to-br from-white to-purple-50/30 rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group"
               style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
             >
               <div className="flex items-center gap-3 mb-6">
@@ -590,7 +867,7 @@ export function Settings() {
                 </div>
                 <h3 className="tracking-tight">Comportement de l'assistant</h3>
               </div>
-              
+
               <div className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="niveauDetail">Niveau de détail des réponses</Label>
@@ -646,8 +923,8 @@ export function Settings() {
               </div>
             </Card>
 
-            <Card 
-              className="p-8 bg-white rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group" 
+            <Card
+              className="p-8 bg-white rounded-2xl hover:shadow-xl transition-all duration-300 border-0 group"
               style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
             >
               <div className="flex items-center gap-3 mb-6">
@@ -656,11 +933,11 @@ export function Settings() {
                 </div>
                 <h3 className="tracking-tight">Domaines prioritaires</h3>
               </div>
-              
+
               <p className="text-sm text-muted-foreground mb-4 font-medium">
                 Sélectionnez les domaines sur lesquels l'IA doit se concentrer pour ses recommandations
               </p>
-              
+
               <div className="flex flex-wrap gap-2">
                 {[
                   { id: "fiscalite", label: "Fiscalité", color: "blue" },
@@ -706,14 +983,14 @@ export function Settings() {
 
         {/* Bouton de sauvegarde global */}
         <div className="flex justify-end gap-4 pt-6">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="rounded-xl px-6 font-semibold hover:shadow-md transition-all"
           >
             Annuler
           </Button>
-          <Button 
-            onClick={handleSave} 
+          <Button
+            onClick={handleSave}
             disabled={isSaving}
             className="bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:shadow-lg hover:shadow-blue-500/25 transition-all hover:scale-105 rounded-xl px-8 font-semibold"
           >
