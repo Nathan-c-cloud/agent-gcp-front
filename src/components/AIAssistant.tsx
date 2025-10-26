@@ -5,7 +5,7 @@ import {Input} from './ui/input';
 import {Send, Sparkles} from 'lucide-react';
 import {chatMessages, suggestedQuestions} from '../lib/mockData';
 
-const API_URL = "https://agent-fiscal-v2-478570587937.us-west1.run.app";
+const API_URL = "https://agent-client-478570587937.us-west1.run.app";
 
 interface Message {
     role: 'user' | 'assistant';
