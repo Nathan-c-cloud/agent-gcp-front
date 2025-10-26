@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { AlertDetail } from './components/AlertDetail';
+import { AlertsList } from './components/AlertsList';
 import { Procedures } from './components/Procedures';
 import { RegulatoryWatch } from './components/RegulatoryWatch';
 import { Settings } from './components/Settings';
@@ -20,7 +21,7 @@ export default function App() {
       case 'dashboard':
         return <Dashboard onNewDeclaration={() => setCurrentPage('new-declaration')} />;
       case 'alert':
-        return <AlertDetail alertId={selectedAlertId} />;
+        return <AlertsList />;
       case 'procedures':
         return <Procedures onNewDeclaration={() => setCurrentPage('new-declaration')} />;
       case 'watch':
