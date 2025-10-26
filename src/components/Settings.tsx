@@ -224,7 +224,13 @@ export function Settings() {
 
       if (result.success) {
         toast.success(result.message || 'Intégration connectée avec succès !');
+
+        // ✅ Attendre un peu que l'API backend écrive dans Firestore
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Recharger les intégrations
         await loadIntegrations();
+
         setIsAddDialogOpen(false);
         setConnectionForm({});
         setSelectedSaas('');
@@ -237,18 +243,29 @@ export function Settings() {
   };
 
   const handleDisconnectIntegration = async (saasId: string, saasName: string) => {
-    if (!confirm(`Êtes-vous sûr de vouloir déconnecter ${saasName} ?`)) return;
+    console.log('🔴 Attempting to disconnect:', saasId, saasName);
+
+    if (!confirm(`Êtes-vous sûr de vouloir déconnecter ${saasName} ?`)) {
+      console.log('❌ Disconnection cancelled by user');
+      return;
+    }
 
     try {
+      console.log('📡 Calling disconnectIntegration API...');
       const result = await disconnectIntegration(saasId, userId, companyId);
+      console.log('✅ Disconnect result:', result);
+
       if (result.success) {
-        toast.success(`${saasName} déconnecté`);
+        toast.success(`${saasName} déconnecté avec succès`);
+        console.log('🔄 Reloading integrations...');
         await loadIntegrations();
       } else {
-        toast.error('Échec de la déconnexion');
+        console.error('❌ Disconnect failed:', result.message);
+        toast.error(`Échec de la déconnexion: ${result.message || 'Erreur inconnue'}`);
       }
     } catch (error) {
-      toast.error('Erreur lors de la déconnexion');
+      console.error('❌ Exception during disconnect:', error);
+      toast.error(`Erreur lors de la déconnexion: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   };
 
@@ -864,143 +881,306 @@ export function Settings() {
         </div>
       ))}
 
-      {/* Dialog pour ajouter/connecter une intégration */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>
-              Connecter {selectedSaas === 'odoo' ? 'Odoo' : selectedSaas === 'payfit' ? 'PayFit' : selectedSaas === 'quickbooks' ? 'QuickBooks' : 'une intégration'}
-            </DialogTitle>
-            <DialogDescription>
-              Entrez vos informations de connexion pour intégrer {selectedSaas}.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {selectedSaas === 'odoo' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="instance_url">URL de l'instance</Label>
-                  <Input
-                    id="instance_url"
-                    placeholder="https://votre-entreprise.odoo.com"
-                    value={connectionForm.instance_url || ''}
-                    onChange={(e) => setConnectionForm({ ...connectionForm, instance_url: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="database">Base de données</Label>
-                  <Input
-                    id="database"
-                    placeholder="production"
-                    value={connectionForm.database || ''}
-                    onChange={(e) => setConnectionForm({ ...connectionForm, database: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="username">Email / Username</Label>
-                  <Input
-                    id="username"
-                    type="email"
-                    placeholder="jean@entreprise.fr"
-                    value={connectionForm.username || ''}
-                    onChange={(e) => setConnectionForm({ ...connectionForm, username: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="api_key">API Key</Label>
-                  <Input
-                    id="api_key"
-                    type="password"
-                    placeholder="Votre API Key Odoo"
-                    value={connectionForm.api_key || ''}
-                    onChange={(e) => setConnectionForm({ ...connectionForm, api_key: e.target.value })}
-                  />
-                </div>
-                <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
-                  <AlertCircle className="size-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-blue-900">
-                    <strong>Astuce :</strong> Générez une API Key dans Odoo → Préférences → Sécurité du compte
-                  </p>
-                </div>
-              </>
-            )}
-
-            {selectedSaas === 'payfit' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="payfit_api_key">API Key PayFit</Label>
-                  <Input
-                    id="payfit_api_key"
-                    type="password"
-                    placeholder="pk_..."
-                    value={connectionForm.payfit_api_key || ''}
-                    onChange={(e) => setConnectionForm({ ...connectionForm, payfit_api_key: e.target.value })}
-                  />
-                </div>
-              </>
-            )}
-
-            {selectedSaas === 'quickbooks' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="client_id">Client ID</Label>
-                  <Input
-                    id="client_id"
-                    placeholder="Votre Client ID"
-                    value={connectionForm.client_id || ''}
-                    onChange={(e) => setConnectionForm({ ...connectionForm, client_id: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client_secret">Client Secret</Label>
-                  <Input
-                    id="client_secret"
-                    type="password"
-                    placeholder="Votre Client Secret"
-                    value={connectionForm.client_secret || ''}
-                    onChange={(e) => setConnectionForm({ ...connectionForm, client_secret: e.target.value })}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAddDialogOpen(false);
-                setConnectionForm({});
-                setSelectedSaas('');
-              }}
-            >
-              Annuler
-            </Button>
-            <Button
-              onClick={handleConnectIntegration}
-              className="bg-gradient-to-r from-green-500 to-emerald-600"
-            >
-              Connecter
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Bouton pour ajouter une nouvelle intégration */}
-      <Button
-        variant="outline"
-        onClick={() => {
-          setSelectedSaas('');
-          setIsAddDialogOpen(true);
-        }}
-        className="w-full mt-4 rounded-xl hover:shadow-md hover:scale-[1.02] transition-all py-6 font-semibold border-dashed border-2 hover:bg-blue-50 hover:border-blue-300"
-      >
-        <Sparkles className="size-5 mr-2" />
-        Ajouter une intégration
-      </Button>
+      {/* Bouton pour ajouter une nouvelle intégration - Masqué si tout est connecté */}
+      {integrations.some(i => i.status === 'disconnected') && (
+        <Button
+          variant="outline"
+          onClick={() => {
+            console.log('🔘 Bouton "Ajouter une intégration" cliqué');
+            console.log('📊 État actuel - selectedSaas:', selectedSaas);
+            console.log('📊 État actuel - isAddDialogOpen:', isAddDialogOpen);
+            setSelectedSaas('');
+            setIsAddDialogOpen(true);
+            console.log('✅ Dialogue ouvert, selectedSaas réinitialisé');
+          }}
+          className="w-full mt-4 rounded-xl hover:shadow-md hover:scale-[1.02] transition-all py-6 font-semibold border-dashed border-2 hover:bg-blue-50 hover:border-blue-300"
+        >
+          <Sparkles className="size-5 mr-2" />
+          Ajouter une intégration
+        </Button>
+      )}
     </div>
   </Card>
+
+  {/* Dialog pour ajouter/connecter une intégration - DÉPLACÉ EN DEHORS */}
+  <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+    <DialogContent className="sm:max-w-[500px]">
+      <DialogHeader>
+        <DialogTitle>
+          {selectedSaas ? `Connecter ${selectedSaas === 'odoo' ? 'Odoo' : selectedSaas === 'payfit' ? 'PayFit' : 'QuickBooks'}` : 'Choisir une intégration'}
+        </DialogTitle>
+        <DialogDescription>
+          {selectedSaas ? `Entrez vos informations de connexion pour intégrer ${selectedSaas}.` : 'Sélectionnez l\'intégration que vous souhaitez connecter.'}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-4 py-4">
+        {/* Sélecteur d'intégration si aucune n'est sélectionnée */}
+        {!selectedSaas && (
+          <div className="space-y-3">
+            <Label>Choisissez une intégration</Label>
+            <div className="grid gap-3">
+              {integrations.filter(i => i.status === 'disconnected').map(integration => (
+                <Button
+                  key={integration.id}
+                  variant="outline"
+                  className="w-full justify-start h-auto p-4 hover:bg-blue-50 hover:border-blue-300"
+                  onClick={() => setSelectedSaas(integration.id)}
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="size-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                      <Plug className="size-5 text-gray-600" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold">{integration.name}</p>
+                      <p className="text-sm text-muted-foreground">{integration.description}</p>
+                    </div>
+                  </div>
+                </Button>
+              ))}
+            </div>
+            {integrations.every(i => i.status === 'connected') && (
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-sm text-green-900 font-medium">
+                  ✅ Toutes les intégrations sont déjà connectées !
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Formulaires de connexion pour chaque intégration */}
+        {selectedSaas === 'odoo' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="instance_url">URL de l'instance</Label>
+              <Input
+                id="instance_url"
+                placeholder="https://votre-entreprise.odoo.com"
+                value={connectionForm.instance_url || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, instance_url: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="database">Base de données</Label>
+              <Input
+                id="database"
+                placeholder="production"
+                value={connectionForm.database || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, database: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="username">Email / Username</Label>
+              <Input
+                id="username"
+                type="email"
+                placeholder="jean@entreprise.fr"
+                value={connectionForm.username || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, username: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="api_key">API Key</Label>
+              <Input
+                id="api_key"
+                type="password"
+                placeholder="Votre API Key Odoo"
+                value={connectionForm.api_key || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, api_key: e.target.value })}
+              />
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+              <AlertCircle className="size-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-900">
+                <strong>Astuce :</strong> Générez une API Key dans Odoo → Préférences → Sécurité du compte
+              </p>
+            </div>
+          </>
+        )}
+
+        {selectedSaas === 'payfit' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="payfit_api_key">API Key PayFit</Label>
+              <Input
+                id="payfit_api_key"
+                type="password"
+                placeholder="pk_..."
+                value={connectionForm.payfit_api_key || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, payfit_api_key: e.target.value })}
+              />
+            </div>
+          </>
+        )}
+
+        {selectedSaas === 'quickbooks' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="client_id">Client ID</Label>
+              <Input
+                id="client_id"
+                placeholder="Votre Client ID"
+                value={connectionForm.client_id || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, client_id: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="client_secret">Client Secret</Label>
+              <Input
+                id="client_secret"
+                type="password"
+                placeholder="Votre Client Secret"
+                value={connectionForm.client_secret || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, client_secret: e.target.value })}
+              />
+            </div>
+          </>
+        )}
+
+        {selectedSaas === 'sage' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="sage_api_key">API Key Sage</Label>
+              <Input
+                id="sage_api_key"
+                type="password"
+                placeholder="Votre clé API Sage"
+                value={connectionForm.sage_api_key || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, sage_api_key: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sage_company_id">ID Entreprise</Label>
+              <Input
+                id="sage_company_id"
+                placeholder="Votre ID entreprise Sage"
+                value={connectionForm.sage_company_id || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, sage_company_id: e.target.value })}
+              />
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+              <AlertCircle className="size-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-900">
+                <strong>Astuce :</strong> Trouvez votre API Key dans Sage → Paramètres → Intégrations API
+              </p>
+            </div>
+          </>
+        )}
+
+        {selectedSaas === 'pennylane' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="pennylane_api_key">API Key Pennylane</Label>
+              <Input
+                id="pennylane_api_key"
+                type="password"
+                placeholder="Votre clé API Pennylane"
+                value={connectionForm.pennylane_api_key || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, pennylane_api_key: e.target.value })}
+              />
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+              <AlertCircle className="size-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-900">
+                <strong>Astuce :</strong> Générez votre API Key dans Pennylane → Paramètres → Développeurs
+              </p>
+            </div>
+          </>
+        )}
+
+        {selectedSaas === 'xero' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="xero_client_id">Client ID Xero</Label>
+              <Input
+                id="xero_client_id"
+                placeholder="Votre Client ID Xero"
+                value={connectionForm.xero_client_id || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, xero_client_id: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="xero_client_secret">Client Secret Xero</Label>
+              <Input
+                id="xero_client_secret"
+                type="password"
+                placeholder="Votre Client Secret Xero"
+                value={connectionForm.xero_client_secret || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, xero_client_secret: e.target.value })}
+              />
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+              <AlertCircle className="size-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-900">
+                <strong>Astuce :</strong> Créez une application dans Xero Developer Portal pour obtenir vos identifiants
+              </p>
+            </div>
+          </>
+        )}
+
+        {selectedSaas === 'other' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="app_name">Nom de l'application</Label>
+              <Input
+                id="app_name"
+                placeholder="Ex: MonLogicielCompta"
+                value={connectionForm.app_name || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, app_name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="api_endpoint">URL de l'API</Label>
+              <Input
+                id="api_endpoint"
+                placeholder="https://api.monapp.com"
+                value={connectionForm.api_endpoint || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, api_endpoint: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="auth_token">Token d'authentification</Label>
+              <Input
+                id="auth_token"
+                type="password"
+                placeholder="Votre token API"
+                value={connectionForm.auth_token || ''}
+                onChange={(e) => setConnectionForm({ ...connectionForm, auth_token: e.target.value })}
+              />
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg">
+              <AlertCircle className="size-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-amber-900">
+                <strong>Note :</strong> Cette intégration nécessitera une validation manuelle de notre équipe.
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+
+      <DialogFooter>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setIsAddDialogOpen(false);
+            setConnectionForm({});
+            setSelectedSaas('');
+          }}
+        >
+          Annuler
+        </Button>
+        {selectedSaas && (
+          <Button
+            onClick={handleConnectIntegration}
+            className="bg-gradient-to-r from-green-500 to-emerald-600"
+          >
+            Connecter
+          </Button>
+        )}
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </TabsContent>
 
 {/* ONGLET ASSISTANT IA */}

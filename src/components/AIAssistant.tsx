@@ -1,9 +1,10 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {Card} from './ui/card';
 import {Button} from './ui/button';
 import {Input} from './ui/input';
 import {Send, Sparkles} from 'lucide-react';
 import {chatMessages, suggestedQuestions} from '../lib/mockData';
+import {getSettings} from '../services/settingsService';
 
 const API_URL = "https://agent-fiscal-v2-478570587937.us-west1.run.app";
 
@@ -16,6 +17,26 @@ export function AIAssistant() {
     const [messages, setMessages] = useState<Message[]>(chatMessages);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [userFirstName, setUserFirstName] = useState('');
+
+    // Charger les données depuis Firestore
+    useEffect(() => {
+        const loadUserData = async () => {
+            try {
+                const companyId = "demo_company"; // TODO: Récupérer depuis le contexte d'authentification
+                const settings = await getSettings(companyId);
+
+                if (settings) {
+                    setUserFirstName(settings.representative.prenom || 'Utilisateur');
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                setUserFirstName('Utilisateur');
+            }
+        };
+
+        loadUserData();
+    }, []);
 
     const handleSend = async (text?: string) => {
         const messageText = text || inputValue;
@@ -54,9 +75,10 @@ export function AIAssistant() {
         } catch (error) {
             console.error("Erreur lors de l'appel à l'agent:", error);
             // Affiche un message d'erreur dans le chat
+            const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue";
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: `Désolé, une erreur est survenue : ${error.message}`
+                content: `Désolé, une erreur est survenue : ${errorMessage}`
             }]);
         } finally {
             setIsTyping(false); // Arrête l'animation "écrit..."
@@ -100,7 +122,7 @@ export function AIAssistant() {
                             <div>
                                 <h2 className="tracking-tight mb-1">Simplify Bot</h2>
                                 <p className="text-base text-muted-foreground font-medium">
-                                    👋 Bonjour Jean, je suis prêt à t'aider dans ta paperasse !
+                                    👋 Bonjour {userFirstName}, je suis prêt à t'aider dans ta paperasse !
                                 </p>
                             </div>
                         </div>

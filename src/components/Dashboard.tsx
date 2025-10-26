@@ -13,8 +13,37 @@ import {
   Zap,
   Plus
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { getSettings } from '../services/settingsService';
 
 export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }) {
+  const [userFirstName, setUserFirstName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Charger les données depuis Firestore
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const companyId = "demo_company"; // TODO: Récupérer depuis le contexte d'authentification
+        const settings = await getSettings(companyId);
+
+        if (settings) {
+          setUserFirstName(settings.representative.prenom || 'Utilisateur');
+          setCompanyName(settings.company_info.nom || 'Votre entreprise');
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        setUserFirstName('Utilisateur');
+        setCompanyName('Votre entreprise');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
   const stats = [
     {
       label: 'Alertes actives',
@@ -76,13 +105,15 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
         {/* Header with greeting */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl tracking-tight mb-2">Bonjour Jean 👋</h1>
+            <h1 className="text-3xl tracking-tight mb-2">
+              {isLoading ? 'Chargement...' : `Bonjour ${userFirstName} 👋`}
+            </h1>
             <p className="text-gray-600 text-lg">
               Voici les nouveautés réglementaires du jour
             </p>
           </div>
           <div className="flex gap-3">
-            <Button 
+            <Button
               onClick={onNewDeclaration}
               className="gap-2 bg-green-600 hover:bg-green-700 shadow-lg transition-all hover:scale-105 rounded-xl px-6 h-12"
             >

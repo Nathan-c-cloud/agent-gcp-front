@@ -1,12 +1,11 @@
 // services/settingsService.ts
-import { initializeApp } from 'firebase/app';
 import {
-  getFirestore,
   doc,
   getDoc,
   setDoc,
   onSnapshot
 } from 'firebase/firestore';
+import { db } from '../firebase';
 
 // ✅ MODE MOCK pour développement sans Firebase
 const USE_MOCK_MODE = false; // Firebase activé
@@ -14,25 +13,10 @@ const USE_MOCK_MODE = false; // Firebase activé
 // Mock storage local
 const MOCK_STORAGE_KEY = 'simplify_settings_mock';
 
-// ✅ VOTRE CONFIGURATION FIREBASE
-const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
-
-if (!firebaseConfig.apiKey) {
-    console.error('❌ Variables d\'environnement Firebase manquantes !');
-    console.error('Vérifiez que .env.local existe et contient les variables VITE_FIREBASE_*');
-}
 
 
-// Initialiser Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+
+
 
 // Types
 export interface CompanyInfo {
