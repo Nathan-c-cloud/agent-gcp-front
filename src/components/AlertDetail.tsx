@@ -1,7 +1,10 @@
+import React, { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { ExternalLink, Bell, Share2, CheckCircle, Lightbulb, Scale, Coins, Users, Gift, Sparkles } from 'lucide-react';
+import { useAlerts } from '../services/alertService';
+import AlertAdapter from '../services/alertAdapter';
 import { alerts } from '../lib/mockData';
 
 interface AlertDetailProps {
@@ -9,7 +12,48 @@ interface AlertDetailProps {
 }
 
 export function AlertDetail({ alertId }: AlertDetailProps) {
-  const alert = alerts.find(a => a.id === alertId) || alerts[0];
+  const { alerts: backendAlerts, loading, error } = useAlerts();
+  const [alert, setAlert] = useState(alerts[0]); // Fallback par défaut
+  
+  useEffect(() => {
+    if (backendAlerts.length > 0) {
+      // Adapter les alertes du backend vers le format UI
+      const adaptedAlerts = AlertAdapter.adaptAlerts(backendAlerts);
+      
+      // Trouver l'alerte demandée ou prendre la première
+      const foundAlert = adaptedAlerts.find(a => a.id === alertId) || adaptedAlerts[0];
+      setAlert(foundAlert);
+    } else if (!loading && !error) {
+      // Fallback sur les données mockées si pas de backend
+      const foundAlert = alerts.find(a => a.id === alertId) || alerts[0];
+      setAlert(foundAlert);
+    }
+  }, [alertId, backendAlerts, loading, error]);
+  
+  // Affichage du loading
+  if (loading) {
+    return (
+      <div className="min-h-full bg-gradient-to-b from-[#F8FAFF] to-white p-12 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement des alertes...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Affichage d'erreur
+  if (error) {
+    return (
+      <div className="min-h-full bg-gradient-to-b from-[#F8FAFF] to-white p-12 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">⚠️</div>
+          <p className="text-gray-600">Erreur: {error}</p>
+          <p className="text-sm text-gray-500 mt-2">Utilisation des données de démonstration</p>
+        </div>
+      </div>
+    );
+  }
 
   const typeConfig = {
     urgent: { color: '#EF4444', label: '🟥 Urgent', badgeVariant: 'destructive' as const },
@@ -31,8 +75,11 @@ export function AlertDetail({ alertId }: AlertDetailProps) {
     aides: '🎁'
   };
 
-  const config = typeConfig[alert.type];
-  const CategoryIcon = categoryIcons[alert.category];
+  const alertType = (alert?.type || 'normal') as 'urgent' | 'info' | 'normal';
+  const alertCategory = (alert?.category || 'fiscal') as 'fiscal' | 'rh' | 'juridique' | 'aides';
+  
+  const config = typeConfig[alertType];
+  const CategoryIcon = categoryIcons[alertCategory];
 
   return (
     <div className="min-h-full bg-gradient-to-b from-[#F8FAFF] to-white p-12 animate-in slide-in-from-right duration-500 relative overflow-hidden">
@@ -58,7 +105,7 @@ export function AlertDetail({ alertId }: AlertDetailProps) {
                 {config.label}
               </Badge>
               <h1 className="tracking-tight flex items-center gap-2">
-                <span>{categoryEmojis[alert.category]}</span>
+                <span>{categoryEmojis[alertCategory]}</span>
                 {alert.title}
               </h1>
             </div>
