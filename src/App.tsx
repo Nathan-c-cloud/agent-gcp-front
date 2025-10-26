@@ -16,6 +16,12 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [selectedAlertId, setSelectedAlertId] = useState<string>('alert-1');
 
+  // TODO: Récupérer depuis le contexte d'authentification
+  const currentUser = {
+    uid: 'test_user',
+    companyId: 'demo_company'
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
@@ -34,7 +40,11 @@ export default function App() {
       case 'assistant':
         return <AIAssistant />;
       case 'new-declaration':
-        return <NewDeclaration onClose={() => setCurrentPage('dashboard')} />;
+        return <NewDeclaration
+          onClose={() => setCurrentPage('dashboard')}
+          userId={currentUser.uid}
+          companyId={currentUser.companyId}
+        />;
       default:
         return <Dashboard onNewDeclaration={() => setCurrentPage('new-declaration')} />;
     }

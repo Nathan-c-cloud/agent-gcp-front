@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -6,12 +6,12 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Progress } from './ui/progress';
 import { Checkbox } from './ui/checkbox';
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  FileText, 
-  Users, 
-  Banknote, 
+import {
+  ArrowLeft,
+  ArrowRight,
+  FileText,
+  Users,
+  Banknote,
   Gift,
   Clock,
   Sparkles,
@@ -20,13 +20,23 @@ import {
   Upload,
   Download,
   Send,
-  Check,
   Calendar,
-  Building2,
   TrendingUp,
-  Shield
+  Shield,
+  Loader2
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import {
+  createDeclaration,
+  savePerimetreData,
+  fetchTVAData,
+  saveDonneesData,
+  fetchDocuments,
+  savePiecesData,
+  advanceToNextStep,
+  submitDeclaration,
+  type Declaration
+} from '@/services/declarationService';
 
 type DeclarationType = 'tva' | 'urssaf' | 'charges' | 'aides' | null;
 type Step = 'selection' | 'scope' | 'data' | 'verification' | 'documents' | 'validation' | 'confirmation';
@@ -70,10 +80,29 @@ const declarationTypes = [
   }
 ];
 
-export function NewDeclaration({ onClose }: { onClose: () => void }) {
+interface NewDeclarationProps {
+  onClose: () => void;
+  userId: string;
+  companyId: string;
+}
+
+export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationProps) {
   const [currentStep, setCurrentStep] = useState<Step>('selection');
   const [selectedType, setSelectedType] = useState<DeclarationType>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Déclaration Firestore
+  const [declaration, setDeclaration] = useState<Declaration | null>(null);
+
+  // Données du formulaire
+  const [periode, setPeriode] = useState('2025-10');
+  const [etablissement, setEtablissement] = useState('siege');
+
+  // Données TVA depuis Odoo
+  const [tvaData, setTvaData] = useState<any>(null);
+  const [documents, setDocuments] = useState<any[]>([]);
 
   const stepProgress = {
     selection: 0,
@@ -102,6 +131,143 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
 
   const selectedDeclaration = declarationTypes.find(d => d.id === selectedType);
 
+  // Créer la déclaration quand un type est sélectionné
+  const handleSelectType = async (type: DeclarationType) => {
+    setSelectedType(type);
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Créer la déclaration dans Firestore
+      const newDeclaration = await createDeclaration(companyId, userId, type!);
+      setDeclaration(newDeclaration);
+      setCurrentStep('scope');
+    } catch (err: any) {
+      console.error('Error creating declaration:', err);
+      setError(err.message || 'Erreur lors de la création de la déclaration');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sauvegarder le périmètre et passer à l'étape suivante
+  const handleSaveScope = async () => {
+    if (!declaration) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Sauvegarder le périmètre
+      await savePerimetreData(declaration.id, userId, {
+        periode,
+        etablissement,
+        regime_fiscal: 'reel_normal'
+      });
+
+      // Passer à l'étape suivante
+      await advanceToNextStep(declaration.id, userId);
+
+      // Charger les données TVA depuis Odoo
+      const data = await fetchTVAData(userId, companyId, periode, etablissement);
+      setTvaData(data);
+
+      // Sauvegarder les données
+      await saveDonneesData(declaration.id, userId, {
+        source: data.source,
+        verified: data.verified,
+        tva_collectee: data.data.tva_collectee,
+        tva_deductible: data.data.tva_deductible,
+        tva_a_payer: data.data.tva_a_payer,
+        details: data.data.details,
+        fetched_at: data.fetched_at
+      });
+
+      setCurrentStep('data');
+    } catch (err: any) {
+      console.error('Error saving scope:', err);
+      setError(err.message || 'Erreur lors de la sauvegarde du périmètre');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Passer à l'étape vérifications
+  const handleGoToVerification = async () => {
+    if (!declaration) return;
+
+    setLoading(true);
+    try {
+      await advanceToNextStep(declaration.id, userId);
+      setCurrentStep('verification');
+    } catch (err: any) {
+      console.error('Error advancing step:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Passer à l'étape documents
+  const handleGoToDocuments = async () => {
+    if (!declaration) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await advanceToNextStep(declaration.id, userId);
+
+      // Charger les documents depuis Odoo
+      const docsData = await fetchDocuments(userId, companyId, selectedType!, periode);
+      setDocuments(docsData.documents);
+
+      // Sauvegarder les documents
+      await savePiecesData(declaration.id, userId, docsData.documents);
+
+      setCurrentStep('documents');
+    } catch (err: any) {
+      console.error('Error loading documents:', err);
+      setError(err.message || 'Erreur lors du chargement des documents');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Passer à l'étape validation
+  const handleGoToValidation = async () => {
+    if (!declaration) return;
+
+    setLoading(true);
+    try {
+      await advanceToNextStep(declaration.id, userId);
+      setCurrentStep('validation');
+    } catch (err: any) {
+      console.error('Error advancing step:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Soumettre la déclaration
+  const handleSubmit = async () => {
+    if (!declaration || !confirmed) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await submitDeclaration(declaration.id, userId);
+      setCurrentStep('confirmation');
+    } catch (err: any) {
+      console.error('Error submitting declaration:', err);
+      setError(err.message || 'Erreur lors de la soumission');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderSelection = () => (
     <div className="space-y-6">
       <div>
@@ -109,19 +275,22 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
         <p className="text-gray-600">Sélectionnez le type de déclaration que vous souhaitez préparer</p>
       </div>
 
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {declarationTypes.map((type) => {
           const Icon = type.icon;
           const colors = colorMap[type.color];
-          
+
           return (
             <Card
               key={type.id}
-              onClick={() => {
-                setSelectedType(type.id);
-                setCurrentStep('scope');
-              }}
-              className="p-6 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all border-2 border-gray-200 hover:border-blue-500"
+              onClick={() => !loading && handleSelectType(type.id)}
+              className={`p-6 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all border-2 border-gray-200 hover:border-blue-500 ${loading ? 'opacity-50' : ''}`}
             >
               <div className="flex items-start gap-4">
                 <div className={`p-3 rounded-xl ${colors.bg}`}>
@@ -146,34 +315,47 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
           );
         })}
       </div>
+
+      {loading && (
+        <div className="flex items-center justify-center gap-2 text-blue-600">
+          <Loader2 className="size-5 animate-spin" />
+          <span>Création de la déclaration...</span>
+        </div>
+      )}
     </div>
   );
 
   const renderScope = () => (
     <div className="space-y-6">
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label className="mb-2 block">Période de déclaration</Label>
-          <Select defaultValue="oct2025">
+          <Select value={periode} onValueChange={setPeriode}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="oct2025">Octobre 2025</SelectItem>
-              <SelectItem value="sep2025">Septembre 2025</SelectItem>
-              <SelectItem value="aug2025">Août 2025</SelectItem>
+              <SelectItem value="2025-10">Octobre 2025</SelectItem>
+              <SelectItem value="2025-09">Septembre 2025</SelectItem>
+              <SelectItem value="2025-08">Août 2025</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div>
           <Label className="mb-2 block">Établissement</Label>
-          <Select defaultValue="main">
+          <Select value={etablissement} onValueChange={setEtablissement}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="main">Siège social - Paris</SelectItem>
-              <SelectItem value="branch">Agence - Lyon</SelectItem>
+              <SelectItem value="siege">Siège social - Paris</SelectItem>
+              <SelectItem value="agence">Agence - Lyon</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -191,45 +373,99 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
           </div>
         </Card>
       </div>
+
+      <Button
+        onClick={handleSaveScope}
+        disabled={loading}
+        className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+      >
+        {loading ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            Chargement des données...
+          </>
+        ) : (
+          <>
+            Suivant
+            <ArrowRight className="size-4" />
+          </>
+        )}
+      </Button>
     </div>
   );
 
-  const renderData = () => (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
-        <Shield className="size-5 text-green-600" />
-        <p className="text-sm font-semibold text-green-900">Données vérifiées • Source : Odoo</p>
-      </div>
+  const renderData = () => {
+    if (!tvaData) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="size-8 animate-spin text-blue-600" />
+        </div>
+      );
+    }
 
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="mb-2 block">TVA collectée</Label>
-            <Input value="12 450,00 €" readOnly className="bg-gray-50 font-semibold" />
-            <p className="text-xs text-gray-600 mt-1">Auto-calculé depuis vos factures</p>
-          </div>
-          <div>
-            <Label className="mb-2 block">TVA déductible</Label>
-            <Input value="8 320,00 €" readOnly className="bg-gray-50 font-semibold" />
-            <p className="text-xs text-gray-600 mt-1">Auto-calculé depuis vos achats</p>
-          </div>
+    const { data } = tvaData;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
+          <Shield className="size-5 text-green-600" />
+          <p className="text-sm font-semibold text-green-900">
+            Données vérifiées • Source : {tvaData.source}
+          </p>
         </div>
 
-        <Card className="p-4 border-2 border-blue-200 bg-blue-50">
-          <div className="flex items-center justify-between">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-700 mb-1">TVA à payer</p>
-              <p className="text-2xl font-bold text-blue-600">4 130,00 €</p>
+              <Label className="mb-2 block">TVA collectée</Label>
+              <Input
+                value={`${data.tva_collectee.toFixed(2)} €`}
+                readOnly
+                className="bg-gray-50 font-semibold"
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                Auto-calculé depuis {data.details.nb_factures_vente} facture(s)
+              </p>
             </div>
-            <Badge className="bg-blue-500 text-white">
-              <Sparkles className="size-3 mr-1" />
-              Analysé par Vertex AI
-            </Badge>
+            <div>
+              <Label className="mb-2 block">TVA déductible</Label>
+              <Input
+                value={`${data.tva_deductible.toFixed(2)} €`}
+                readOnly
+                className="bg-gray-50 font-semibold"
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                Auto-calculé depuis {data.details.nb_factures_achat} achat(s)
+              </p>
+            </div>
           </div>
-        </Card>
+
+          <Card className="p-4 border-2 border-blue-200 bg-blue-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-700 mb-1">TVA à payer</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {data.tva_a_payer.toFixed(2)} €
+                </p>
+              </div>
+              <Badge className="bg-blue-500 text-white">
+                <Sparkles className="size-3 mr-1" />
+                Analysé par Vertex AI
+              </Badge>
+            </div>
+          </Card>
+
+          {tvaData.missing_fields && tvaData.missing_fields.length > 0 && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                ⚠️ Données manquantes : {tvaData.missing_fields.join(', ')}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderVerification = () => (
     <div className="space-y-6">
@@ -275,27 +511,24 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
       <div>
         <h3 className="font-bold mb-4">Pièces justificatives attachées</h3>
         <div className="space-y-2">
-          <Card className="p-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileText className="size-5 text-blue-600" />
-              <div>
-                <p className="font-semibold text-sm">Journal des ventes - Octobre 2025</p>
-                <p className="text-xs text-gray-600">245 KB • PDF</p>
-              </div>
+          {documents.length > 0 ? (
+            documents.map((doc, index) => (
+              <Card key={index} className="p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileText className="size-5 text-blue-600" />
+                  <div>
+                    <p className="font-semibold text-sm">{doc.name}</p>
+                    <p className="text-xs text-gray-600">{doc.size} • {doc.type.toUpperCase()}</p>
+                  </div>
+                </div>
+                <Badge className="bg-green-100 text-green-700 border-0">{doc.status}</Badge>
+              </Card>
+            ))
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="size-6 animate-spin text-blue-600" />
             </div>
-            <Badge className="bg-green-100 text-green-700 border-0">Attaché</Badge>
-          </Card>
-
-          <Card className="p-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileText className="size-5 text-blue-600" />
-              <div>
-                <p className="font-semibold text-sm">Journal des achats - Octobre 2025</p>
-                <p className="text-xs text-gray-600">198 KB • PDF</p>
-              </div>
-            </div>
-            <Badge className="bg-green-100 text-green-700 border-0">Attaché</Badge>
-          </Card>
+          )}
         </div>
       </div>
 
@@ -311,57 +544,78 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
     </div>
   );
 
-  const renderValidation = () => (
-    <div className="space-y-6">
-      <Card className="p-6 bg-gradient-to-br from-blue-50 to-white border-2 border-blue-200">
-        <h3 className="font-bold mb-4">Résumé de votre déclaration</h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between py-2 border-b">
-            <span className="text-gray-700">Période</span>
-            <span className="font-semibold">Octobre 2025</span>
+  const renderValidation = () => {
+    if (!tvaData) return null;
+
+    const { data } = tvaData;
+
+    return (
+      <div className="space-y-6">
+        <Card className="p-6 bg-gradient-to-br from-blue-50 to-white border-2 border-blue-200">
+          <h3 className="font-bold mb-4">Résumé de votre déclaration</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2 border-b">
+              <span className="text-gray-700">Période</span>
+              <span className="font-semibold">{periode}</span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b">
+              <span className="text-gray-700">TVA collectée</span>
+              <span className="font-semibold">{data.tva_collectee.toFixed(2)} €</span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b">
+              <span className="text-gray-700">TVA déductible</span>
+              <span className="font-semibold">{data.tva_deductible.toFixed(2)} €</span>
+            </div>
+            <div className="flex items-center justify-between py-3 bg-blue-100 -mx-6 px-6 rounded-lg mt-3">
+              <span className="font-bold text-blue-900">TVA à payer</span>
+              <span className="text-2xl font-bold text-blue-600">{data.tva_a_payer.toFixed(2)} €</span>
+            </div>
           </div>
-          <div className="flex items-center justify-between py-2 border-b">
-            <span className="text-gray-700">TVA collectée</span>
-            <span className="font-semibold">12 450,00 €</span>
+        </Card>
+
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700">{error}</p>
           </div>
-          <div className="flex items-center justify-between py-2 border-b">
-            <span className="text-gray-700">TVA déductible</span>
-            <span className="font-semibold">8 320,00 €</span>
-          </div>
-          <div className="flex items-center justify-between py-3 bg-blue-100 -mx-6 px-6 rounded-lg mt-3">
-            <span className="font-bold text-blue-900">TVA à payer</span>
-            <span className="text-2xl font-bold text-blue-600">4 130,00 €</span>
-          </div>
+        )}
+
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-gray-50 border border-gray-200">
+          <Checkbox
+            id="confirm"
+            checked={confirmed}
+            onCheckedChange={(checked) => setConfirmed(checked as boolean)}
+          />
+          <Label htmlFor="confirm" className="cursor-pointer flex-1">
+            Je confirme l'exactitude des informations déclarées et autorise l'envoi de cette déclaration
+          </Label>
         </div>
-      </Card>
 
-      <div className="flex items-start gap-3 p-4 rounded-lg bg-gray-50 border border-gray-200">
-        <Checkbox 
-          id="confirm" 
-          checked={confirmed}
-          onCheckedChange={(checked) => setConfirmed(checked as boolean)}
-        />
-        <Label htmlFor="confirm" className="cursor-pointer flex-1">
-          Je confirme l'exactitude des informations déclarées et autorise l'envoi de cette déclaration
-        </Label>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+            disabled={!confirmed || loading}
+            onClick={handleSubmit}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Envoi...
+              </>
+            ) : (
+              <>
+                <Send className="size-4" />
+                📤 Envoyer via portail
+              </>
+            )}
+          </Button>
+          <Button variant="outline" className="w-full gap-2" disabled={!confirmed}>
+            <Download className="size-4" />
+            📄 Télécharger PDF
+          </Button>
+        </div>
       </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Button 
-          className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
-          disabled={!confirmed}
-          onClick={() => setCurrentStep('confirmation')}
-        >
-          <Send className="size-4" />
-          📤 Envoyer via portail
-        </Button>
-        <Button variant="outline" className="w-full gap-2" disabled={!confirmed}>
-          <Download className="size-4" />
-          📄 Télécharger PDF
-        </Button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderConfirmation = () => (
     <div className="space-y-6 text-center">
@@ -380,7 +634,7 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-gray-700">N° de dossier</span>
-            <span className="font-mono font-semibold">TVA-2025-10-001</span>
+            <span className="font-mono font-semibold">{declaration?.id.substring(0, 12).toUpperCase()}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-gray-700">Date de création</span>
@@ -388,7 +642,7 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-gray-700">Pièces jointes</span>
-            <span className="font-semibold">2 documents</span>
+            <span className="font-semibold">{documents.length} documents</span>
           </div>
         </div>
       </Card>
@@ -423,16 +677,7 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const canGoNext = currentStep !== 'selection' && currentStep !== 'confirmation';
   const canGoBack = currentStep !== 'selection' && currentStep !== 'confirmation';
-
-  const goNext = () => {
-    const steps: Step[] = ['scope', 'data', 'verification', 'documents', 'validation'];
-    const currentIndex = steps.indexOf(currentStep);
-    if (currentIndex < steps.length - 1) {
-      setCurrentStep(steps[currentIndex + 1]);
-    }
-  };
 
   const goBack = () => {
     const steps: Step[] = ['scope', 'data', 'verification', 'documents', 'validation'];
@@ -444,6 +689,18 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const goNext = () => {
+    if (currentStep === 'data') {
+      handleGoToVerification();
+    } else if (currentStep === 'verification') {
+      handleGoToDocuments();
+    } else if (currentStep === 'documents') {
+      handleGoToValidation();
+    }
+  };
+
+  const canGoNext = currentStep === 'data' || currentStep === 'verification' || currentStep === 'documents';
+
   return (
     <div className="min-h-full bg-gray-50 p-12">
       <div className="max-w-4xl mx-auto">
@@ -453,7 +710,7 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
             <ArrowLeft className="size-4" />
             Retour
           </Button>
-          
+
           {currentStep !== 'selection' && currentStep !== 'confirmation' && (
             <>
               <div className="flex items-center justify-between mb-4">
@@ -467,7 +724,7 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
               <Progress value={stepProgress[currentStep]} className="h-2 mb-2" />
               <div className="flex justify-between text-xs text-gray-600">
                 {Object.entries(stepNames).map(([key, name]) => (
-                  <span 
+                  <span
                     key={key}
                     className={currentStep === key ? 'font-bold text-blue-600' : ''}
                   >
@@ -493,12 +750,22 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
                 Précédent
               </Button>
             )}
-            <Button 
-              onClick={goNext} 
+            <Button
+              onClick={goNext}
+              disabled={loading}
               className={`gap-2 bg-blue-600 hover:bg-blue-700 ${!canGoBack ? 'ml-auto' : ''}`}
             >
-              Suivant
-              <ArrowRight className="size-4" />
+              {loading ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Chargement...
+                </>
+              ) : (
+                <>
+                  Suivant
+                  <ArrowRight className="size-4" />
+                </>
+              )}
             </Button>
           </div>
         )}
@@ -506,3 +773,4 @@ export function NewDeclaration({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
+
