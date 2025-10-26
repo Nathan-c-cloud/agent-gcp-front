@@ -16,13 +16,19 @@ const MOCK_STORAGE_KEY = 'simplify_settings_mock';
 
 // ✅ VOTRE CONFIGURATION FIREBASE
 const firebaseConfig = {
-  apiKey: "AIzaSyCGGeq5T3zaSwrz-HVQS802kacw5uZ_aY0",
-  authDomain: "agent-gcp-f6005.firebaseapp.com",
-  projectId: "agent-gcp-f6005",
-  storageBucket: "agent-gcp-f6005.firebasestorage.app",
-  appId: "1:478570587937:web:d81df679d2415617548060",
-  messagingSenderId: "G-EDEHHT05DB",
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
+
+if (!firebaseConfig.apiKey) {
+    console.error('❌ Variables d\'environnement Firebase manquantes !');
+    console.error('Vérifiez que .env.local existe et contient les variables VITE_FIREBASE_*');
+}
+
 
 // Initialiser Firebase
 const app = initializeApp(firebaseConfig);
