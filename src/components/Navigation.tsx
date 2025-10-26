@@ -1,5 +1,7 @@
 import { LucideIcon } from 'lucide-react';
 import { Page } from '../App';
+import { useState, useEffect } from 'react';
+import { getSettings } from '../services/settingsService';
 
 interface NavItem {
   id: Page;
@@ -14,6 +16,34 @@ interface NavigationProps {
 }
 
 export function Navigation({ currentPage, onNavigate, items }: NavigationProps) {
+  const [userInitials, setUserInitials] = useState('JD');
+  const [userName, setUserName] = useState('Jean Dupont');
+  const [companyName, setCompanyName] = useState('Entreprise SAS');
+
+  // Charger les données depuis Firestore
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const companyId = "demo_company"; // TODO: Récupérer depuis le contexte d'authentification
+        const settings = await getSettings(companyId);
+
+        if (settings) {
+          const prenom = settings.representative.prenom || 'Jean';
+          const nom = settings.representative.nom || 'Dupont';
+          const entreprise = settings.company_info.nom || 'Entreprise SAS';
+
+          setUserName(`${prenom} ${nom}`);
+          setUserInitials(`${prenom.charAt(0)}${nom.charAt(0)}`.toUpperCase());
+          setCompanyName(entreprise);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
   return (
     <nav className="w-72 bg-white border-r border-gray-200 p-8 flex flex-col gap-2">
       <div className="mb-10">
@@ -54,11 +84,11 @@ export function Navigation({ currentPage, onNavigate, items }: NavigationProps) 
       <div className="mt-auto pt-8 border-t border-gray-200">
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 hover:shadow-md transition-all cursor-pointer">
           <div className="size-11 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-md">
-            <span className="font-semibold">JD</span>
+            <span className="font-semibold">{userInitials}</span>
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900">Jean Dupont</p>
-            <p className="text-xs text-gray-600">Entreprise SAS</p>
+            <p className="text-sm font-semibold text-gray-900">{userName}</p>
+            <p className="text-xs text-gray-600">{companyName}</p>
           </div>
         </div>
       </div>

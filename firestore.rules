@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ✅ Règles pour la collection 'settings'
+    match /settings/{companyId} {
+      // Permettre la lecture et l'écriture pour tous (développement)
+      allow read, write: if true;
+
+      // Pour la production, utilisez plutôt :
+      // allow read, write: if request.auth != null;
+    }
+
+    // ✅ Règles pour la collection 'integrations'
+    match /integrations/{integrationId} {
+      allow read, write: if true;
+
+      // Pour la production :
+      // allow read, write: if request.auth != null;
+    }
+
+    // ✅ Règles pour la collection 'declarations'
+    match /declarations/{declarationId} {
+      allow read, write: if true;
+
+      // Pour la production :
+      // allow read, write: if request.auth != null;
+    }
+
+    // ✅ Règles pour la collection 'users' (NOUVEAU)
+    match /users/{userId} {
+      allow read, write: if true;
+
+      // Pour la production :
+      // allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ✅ Règles pour la collection 'companies' (NOUVEAU)
+    match /companies/{companyId} {
+      allow read, write: if true;
+
+      // Pour la production :
+      // allow read, write: if request.auth != null;
+    }
+
+    // ✅ Règles pour la collection 'saas_connections' (NOUVEAU)
+    match /saas_connections/{connectionId} {
+      allow read, write: if true;
+
+      // Pour la production :
+      // allow read, write: if request.auth != null;
+    }
+
+    // ✅ Règles pour la collection 'connections' (NOUVEAU)
+    match /connections/{connectionId} {
+      allow read, write: if true;
+
+      // Pour la production :
+      // allow read, write: if request.auth != null;
+    }
+
+    // Bloquer l'accès par défaut à toutes les autres collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
