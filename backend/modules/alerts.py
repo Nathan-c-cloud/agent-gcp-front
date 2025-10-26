@@ -47,7 +47,16 @@ if GCP_PROJECT:
 
 def get_id_token():
     """Obtient un ID token pour authentifier les appels vers alert-engine"""
+    
+    # Détection environnement local vs cloud
+    is_local = os.getenv('GAE_ENV') is None and os.getenv('K_SERVICE') is None
+    
+    if is_local:
+        logger.info("🏠 Environnement local détecté - Désactivation des appels alert-engine")
+        return None
+    
     try:
+        # Sur Google Cloud - utiliser les credentials par défaut
         credentials, project = google.auth.default()
         
         # Créer une requête d'authentification
@@ -125,16 +134,22 @@ def trigger_alert_engine_background():
     def make_request():
         try:
             id_token = get_id_token()
-            headers = {}
             
-            if id_token:
-                headers['Authorization'] = f'Bearer {id_token}'
+            if not id_token:
+                logger.info("🏠 Mode local - Alert-engine background non déclenché (normal en développement)")
+                return
             
-            logger.info(f"Déclenchement de alert-engine en background: {ALERT_ENGINE_URL}")
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {id_token}'
+            }
+            
+            logger.info(f"☁️ Déclenchement de alert-engine en background: {ALERT_ENGINE_URL}")
             
             response = requests.post(
                 ALERT_ENGINE_URL,
                 headers=headers,
+                json={},  # Corps JSON vide
                 timeout=CALL_TIMEOUT_SECONDS
             )
             
@@ -155,16 +170,22 @@ def trigger_alert_engine_sync():
     """Déclenche alert-engine de façon synchrone et retourne le résultat"""
     try:
         id_token = get_id_token()
-        headers = {}
         
-        if id_token:
-            headers['Authorization'] = f'Bearer {id_token}'
+        if not id_token:
+            logger.info("🏠 Mode local - Alert-engine non déclenché (normal en développement)")
+            return {"status": "skipped", "reason": "local_development"}
         
-        logger.info(f"Déclenchement de alert-engine en mode sync: {ALERT_ENGINE_URL}")
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {id_token}'
+        }
+        
+        logger.info(f"☁️ Déclenchement de alert-engine en mode sync: {ALERT_ENGINE_URL}")
         
         response = requests.post(
             ALERT_ENGINE_URL,
             headers=headers,
+            json={},  # Corps JSON vide, comme dans les tests réussis
             timeout=CALL_TIMEOUT_SECONDS
         )
         
