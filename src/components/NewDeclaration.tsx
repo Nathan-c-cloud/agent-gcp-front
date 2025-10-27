@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -31,10 +31,12 @@ import {
   savePerimetreData,
   fetchTVAData,
   saveDonneesData,
+  verifyDeclarationData,
   fetchDocuments,
   savePiecesData,
   advanceToNextStep,
   submitDeclaration,
+  downloadPDF,
   type Declaration
 } from '@/services/declarationService';
 
@@ -102,6 +104,11 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
 
   // Données TVA depuis Odoo
   const [tvaData, setTvaData] = useState<any>(null);
+
+  // Vérifications IA
+  const [verifications, setVerifications] = useState<any[]>([]);
+
+  // Documents
   const [documents, setDocuments] = useState<any[]>([]);
 
   const stepProgress = {
@@ -131,14 +138,12 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
 
   const selectedDeclaration = declarationTypes.find(d => d.id === selectedType);
 
-  // Créer la déclaration quand un type est sélectionné
   const handleSelectType = async (type: DeclarationType) => {
     setSelectedType(type);
     setLoading(true);
     setError(null);
 
     try {
-      // Créer la déclaration dans Firestore
       const newDeclaration = await createDeclaration(companyId, userId, type!);
       setDeclaration(newDeclaration);
       setCurrentStep('scope');
@@ -150,7 +155,6 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
     }
   };
 
-  // Sauvegarder le périmètre et passer à l'étape suivante
   const handleSaveScope = async () => {
     if (!declaration) return;
 
@@ -158,21 +162,17 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
     setError(null);
 
     try {
-      // Sauvegarder le périmètre
       await savePerimetreData(declaration.id, userId, {
         periode,
         etablissement,
         regime_fiscal: 'reel_normal'
       });
 
-      // Passer à l'étape suivante
       await advanceToNextStep(declaration.id, userId);
 
-      // Charger les données TVA depuis Odoo
       const data = await fetchTVAData(userId, companyId, periode, etablissement);
       setTvaData(data);
 
-      // Sauvegarder les données
       await saveDonneesData(declaration.id, userId, {
         source: data.source,
         verified: data.verified,
@@ -192,23 +192,45 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
     }
   };
 
-  // Passer à l'étape vérifications
   const handleGoToVerification = async () => {
-    if (!declaration) return;
+    if (!declaration || !tvaData) return;
 
     setLoading(true);
+    setError(null);
+
     try {
       await advanceToNextStep(declaration.id, userId);
+
+      // Préparer les données pour la vérification
+      const dataToVerify = {
+        tva_collectee: tvaData.data?.tva_collectee || 0,
+        tva_deductible: tvaData.data?.tva_deductible || 0,
+        tva_a_payer: tvaData.data?.tva_a_payer || 0,
+        details: tvaData.data?.details || {}
+      };
+
+      console.log('Sending verification request with data:', dataToVerify);
+
+      // Appeler l'IA pour vérifier les données
+      const verificationResult = await verifyDeclarationData(
+        declaration.id,
+        userId,
+        dataToVerify,
+        null // Pas de données historiques pour le moment
+      );
+
+      console.log('Verification result:', verificationResult);
+
+      setVerifications(verificationResult.verifications || []);
       setCurrentStep('verification');
     } catch (err: any) {
-      console.error('Error advancing step:', err);
-      setError(err.message);
+      console.error('Error during verification:', err);
+      setError(err.message || 'Erreur lors de la vérification');
     } finally {
       setLoading(false);
     }
   };
 
-  // Passer à l'étape documents
   const handleGoToDocuments = async () => {
     if (!declaration) return;
 
@@ -218,11 +240,9 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
     try {
       await advanceToNextStep(declaration.id, userId);
 
-      // Charger les documents depuis Odoo
       const docsData = await fetchDocuments(userId, companyId, selectedType!, periode);
       setDocuments(docsData.documents);
 
-      // Sauvegarder les documents
       await savePiecesData(declaration.id, userId, docsData.documents);
 
       setCurrentStep('documents');
@@ -234,7 +254,6 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
     }
   };
 
-  // Passer à l'étape validation
   const handleGoToValidation = async () => {
     if (!declaration) return;
 
@@ -250,7 +269,32 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
     }
   };
 
-  // Soumettre la déclaration
+  const handleDownloadPDF = async () => {
+    if (!declaration) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const pdfBlob = await downloadPDF(declaration.id);
+
+      // Créer un lien de téléchargement
+      const url = window.URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `declaration_tva_${periode}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      console.error('Error downloading PDF:', err);
+      setError(err.message || 'Erreur lors du téléchargement du PDF');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!declaration || !confirmed) return;
 
@@ -469,40 +513,44 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
 
   const renderVerification = () => (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200">
-        <Sparkles className="size-5 text-blue-600" />
-        <p className="text-sm font-semibold text-blue-900">Analyse IA terminée • 2 suggestions détectées</p>
-      </div>
-
-      <div className="space-y-3">
-        <Card className="p-4 border-l-4 border-yellow-500">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="size-5 text-yellow-600 mt-1" />
-            <div className="flex-1">
-              <p className="font-semibold mb-1">Variation inhabituelle détectée</p>
-              <p className="text-sm text-gray-700 mb-2">
-                La TVA collectée est 15% supérieure au mois précédent
-              </p>
-              <Badge className="bg-yellow-100 text-yellow-800 border-0">
-                <TrendingUp className="size-3 mr-1" />
-                +15% vs septembre 2025
-              </Badge>
-            </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="size-8 animate-spin text-blue-600" />
+          <span className="ml-3">Analyse IA en cours...</span>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200">
+            <Sparkles className="size-5 text-blue-600" />
+            <p className="text-sm font-semibold text-blue-900">
+              Analyse IA terminée • {verifications.length} suggestion(s) détectée(s)
+            </p>
           </div>
-        </Card>
 
-        <Card className="p-4 border-l-4 border-green-500">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="size-5 text-green-600 mt-1" />
-            <div className="flex-1">
-              <p className="font-semibold mb-1">Cohérence vérifiée</p>
-              <p className="text-sm text-gray-700">
-                Les montants correspondent aux écritures comptables
-              </p>
-            </div>
+          <div className="space-y-3">
+            {verifications.map((verif, index) => (
+              <Card
+                key={index}
+                className={`p-4 border-l-4 ${
+                  verif.type === 'warning' ? 'border-yellow-500' : 
+                  verif.type === 'success' ? 'border-green-500' : 
+                  'border-blue-500'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  {verif.type === 'warning' && <AlertTriangle className="size-5 text-yellow-600 mt-1" />}
+                  {verif.type === 'success' && <CheckCircle className="size-5 text-green-600 mt-1" />}
+                  {verif.type === 'info' && <Sparkles className="size-5 text-blue-600 mt-1" />}
+                  <div className="flex-1">
+                    <p className="font-semibold mb-1">{verif.title}</p>
+                    <p className="text-sm text-gray-700">{verif.message}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
-        </Card>
-      </div>
+        </>
+      )}
     </div>
   );
 
@@ -537,9 +585,23 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
         Ajouter un justificatif
       </Button>
 
-      <Button variant="outline" className="w-full gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100">
-        <Download className="size-4" />
-        📄 Générer le récapitulatif PDF
+      <Button
+        variant="outline"
+        className="w-full gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+        onClick={handleDownloadPDF}
+        disabled={loading}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            Génération...
+          </>
+        ) : (
+          <>
+            <Download className="size-4" />
+            📄 Générer le récapitulatif PDF
+          </>
+        )}
       </Button>
     </div>
   );
@@ -608,9 +670,20 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
               </>
             )}
           </Button>
-          <Button variant="outline" className="w-full gap-2" disabled={!confirmed}>
-            <Download className="size-4" />
-            📄 Télécharger PDF
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            disabled={!confirmed || loading}
+            onClick={handleDownloadPDF}
+          >
+            {loading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <>
+                <Download className="size-4" />
+                📄 Télécharger PDF
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -773,4 +846,3 @@ export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationPro
     </div>
   );
 }
-
