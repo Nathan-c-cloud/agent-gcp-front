@@ -15,11 +15,25 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getSettings } from '../services/settingsService';
+import { useProcedures, ProceduresService, type Procedure } from '../services/proceduresService';
+import { useAlerts, alertService, type Alert } from '../services/alertService';
 
-export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }) {
+export function Dashboard({ 
+  onNewDeclaration,
+  onNavigateToProcedures,
+  onNavigateToAlerts
+}: { 
+  onNewDeclaration: () => void;
+  onNavigateToProcedures?: () => void;
+  onNavigateToAlerts?: () => void;
+}) {
   const [userFirstName, setUserFirstName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Récupérer les vraies données des démarches et des alertes
+  const { procedures: allProcedures } = useProcedures('test_user');
+  const { alerts: allAlerts } = useAlerts();
 
   // Charger les données depuis Firestore
   useEffect(() => {
@@ -44,12 +58,20 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
     loadUserData();
   }, []);
 
+  // Calculer les vraies statistiques
+  const demarchesEnCours = allProcedures.filter(proc => proc.status === 'inprogress').length;
+  const demarchesCompletes = allProcedures.filter(proc => proc.status === 'done').length;
+  const demarchesUrgentes = ProceduresService.countUrgent(allProcedures);
+  
+  // Calculer les vraies alertes
+  const alertesCritiques = allAlerts.filter(alert => alert.severity === 'critical' || alert.severity === 'high').length;
+  
   const stats = [
     {
       label: 'Alertes actives',
-      value: '12',
-      change: '+3 cette semaine',
-      trend: 'up',
+      value: allAlerts.length.toString(),
+      change: alertesCritiques > 0 ? `${alertesCritiques} critiques` : 'Aucune critique',
+      trend: alertesCritiques > 0 ? 'up' : 'neutral',
       icon: AlertCircle,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
@@ -57,9 +79,9 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
     },
     {
       label: 'Démarches en cours',
-      value: '5',
-      change: '2 à échéance proche',
-      trend: 'neutral',
+      value: demarchesEnCours.toString(),
+      change: demarchesUrgentes > 0 ? `${demarchesUrgentes} à échéance proche` : 'Aucune urgence',
+      trend: demarchesUrgentes > 0 ? 'neutral' : 'up',
       icon: Clock,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
@@ -67,8 +89,8 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
     },
     {
       label: 'Tâches complétées',
-      value: '24',
-      change: '+8 ce mois',
+      value: demarchesCompletes.toString(),
+      change: `${allProcedures.length} au total`,
       trend: 'up',
       icon: CheckCircle2,
       color: 'text-green-600',
@@ -77,7 +99,7 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
     },
     {
       label: 'Documents traités',
-      value: '156',
+      value: '156', // TODO: Calculer depuis les vraies données si disponible
       change: '+12% vs mois dernier',
       trend: 'up',
       icon: FileText,
@@ -87,17 +109,55 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
     }
   ];
 
-  const urgentTasks = [
-    { title: 'Déclaration TVA', deadline: '15 Oct', status: 'urgent', progress: 30 },
-    { title: 'URSSAF Q4', deadline: '30 Oct', status: 'warning', progress: 60 },
-    { title: 'Bilan comptable', deadline: '20 Oct', status: 'normal', progress: 85 }
-  ];
+  // Calculer les tâches urgentes à partir des vraies données
+  const urgentTasks = allProcedures
+    .filter(proc => proc.status !== 'done') // Uniquement les procédures non terminées
+    .map(proc => {
+      const daysUntil = ProceduresService.getDaysUntilDeadline(proc.deadline);
+      const deadline = new Date(proc.deadline);
+      const isUrgent = ProceduresService.isUrgent(proc);
+      
+      return {
+        id: proc.id,
+        title: proc.name,
+        deadline: deadline.toLocaleDateString('fr-FR', { 
+          day: '2-digit', 
+          month: 'short' 
+        }),
+        status: isUrgent ? 'urgent' : (daysUntil <= 15 ? 'warning' : 'normal'),
+        progress: proc.progress,
+        daysUntil
+      };
+    })
+    .sort((a, b) => a.daysUntil - b.daysUntil) // Trier par échéance la plus proche
+    .slice(0, 3); // Prendre les 3 plus urgentes
 
-  const recentAlerts = [
-    { title: 'Nouvelle règle URSSAF — cotisations trimestrielles', category: 'RH', urgent: true },
-    { title: 'Loi de finances 2026 — Mesures fiscales', category: 'Fiscal', urgent: false },
-    { title: 'Aide à la transition écologique', category: 'Aides', urgent: false }
-  ];
+  // Préparer les alertes récentes à partir des vraies données
+  const recentAlerts = allAlerts
+    .slice(0, 3) // Prendre les 3 plus récentes (déjà triées par priorité)
+    .map(alert => {
+      // Déterminer la catégorie basée sur le type d'alerte ou le message
+      let category = 'Réglementaire';
+      const messageLC = (alert.message || alert.title || '').toLowerCase();
+      
+      if (messageLC.includes('urssaf') || messageLC.includes('social') || messageLC.includes('rh')) {
+        category = 'RH';
+      } else if (messageLC.includes('tva') || messageLC.includes('fiscal') || messageLC.includes('impôt')) {
+        category = 'Fiscal';  
+      } else if (messageLC.includes('aide') || messageLC.includes('subvention')) {
+        category = 'Aides';
+      }
+      
+      return {
+        id: alert.id,
+        title: alert.title || alert.message,
+        category,
+        urgent: alert.severity === 'critical' || alert.severity === 'high',
+        severity: alert.severity,
+        due_date: alert.due_date,
+        days_remaining: alert.days_remaining
+      };
+    });
 
   return (
     <div className="min-h-full bg-gray-50 p-12 animate-in fade-in duration-500">
@@ -166,16 +226,33 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
                 </div>
                 <h3 className="text-xl tracking-tight font-semibold">Démarches urgentes</h3>
               </div>
-              <Button variant="ghost" size="sm" className="gap-1">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-1"
+                onClick={() => onNavigateToProcedures?.()}
+              >
                 <span className="font-medium">Tout voir</span>
                 <ArrowUpRight className="size-4" />
               </Button>
             </div>
             <div className="space-y-4">
-              {urgentTasks.map((task, index) => (
+              {urgentTasks.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="flex flex-col items-center gap-3">
+                    <CheckCircle2 className="size-12 text-green-500" />
+                    <div>
+                      <p className="font-semibold text-gray-900">Aucune démarche urgente !</p>
+                      <p className="text-sm text-gray-600">Toutes vos échéances sont sous contrôle</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                urgentTasks.map((task, index) => (
                 <div
                   key={index}
                   className="group flex items-center justify-between p-5 rounded-xl bg-gray-50 border border-gray-200 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
+                  onClick={() => onNavigateToProcedures?.()}
                 >
                   <div className="flex items-center gap-4 flex-1">
                     <div className={`w-1.5 h-16 rounded-full ${
@@ -198,13 +275,19 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
                     {task.status === 'urgent' ? 'Urgent' : task.status === 'warning' ? 'Bientôt' : 'Normal'}
                   </Badge>
                 </div>
-              ))}
+                ))
+              )}
             </div>
-            <div className="mt-6 p-4 rounded-xl bg-green-50 border border-green-200">
-              <p className="text-sm font-medium text-green-900">
-                🎉 Bonne nouvelle ! <span className="font-bold">2 démarches sur 5</span> sont déjà faites
-              </p>
-            </div>
+            {allProcedures.length > 0 && (
+              <div className="mt-6 p-4 rounded-xl bg-green-50 border border-green-200">
+                <p className="text-sm font-medium text-green-900">
+                  🎉 Bonne nouvelle ! <span className="font-bold">{demarchesCompletes} démarches sur {allProcedures.length}</span> sont déjà faites
+                  {demarchesCompletes === allProcedures.length && (
+                    <span> - Tout est à jour ! 🎯</span>
+                  )}
+                </p>
+              </div>
+            )}
           </Card>
 
           {/* Activity Progress */}
@@ -263,29 +346,62 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" className="gap-1">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="gap-1"
+              onClick={() => onNavigateToAlerts?.()}
+            >
               <span className="font-medium">Voir toutes</span>
               <ArrowUpRight className="size-4" />
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {recentAlerts.map((alert, index) => (
-              <div
-                key={index}
-                className="p-5 rounded-xl border border-gray-200 bg-white hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
-              >
-                <div className={`absolute top-0 left-0 right-0 h-1.5 ${
-                  alert.category === 'RH' ? 'bg-green-500' :
-                  alert.category === 'Fiscal' ? 'bg-blue-500' :
-                  'bg-purple-500'
-                }`} />
-                {alert.urgent && (
-                  <Badge className="mb-3 bg-red-500 text-white border-0 font-semibold">Urgent</Badge>
-                )}
-                <p className="text-sm font-medium mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors">{alert.title}</p>
-                <Badge variant="secondary" className="text-xs font-semibold">{alert.category}</Badge>
+            {recentAlerts.length === 0 ? (
+              <div className="col-span-3 text-center py-8">
+                <div className="flex flex-col items-center gap-3">
+                  <CheckCircle2 className="size-12 text-green-500" />
+                  <div>
+                    <p className="font-semibold text-gray-900">Aucune alerte récente</p>
+                    <p className="text-sm text-gray-600">Tout est à jour côté réglementaire !</p>
+                  </div>
+                </div>
               </div>
-            ))}
+            ) : (
+              recentAlerts.map((alert, index) => (
+                <div
+                  key={alert.id || index}
+                  className="p-5 rounded-xl border border-gray-200 bg-white hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
+                  onClick={() => onNavigateToAlerts?.()}
+                >
+                  <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+                    alert.category === 'RH' ? 'bg-green-500' :
+                    alert.category === 'Fiscal' ? 'bg-blue-500' :
+                    alert.category === 'Aides' ? 'bg-purple-500' :
+                    'bg-orange-500'
+                  }`} />
+                  {alert.urgent && (
+                    <Badge className="mb-3 bg-red-500 text-white border-0 font-semibold">
+                      {alertService.getPriorityIcon(alert.severity)} Urgent
+                    </Badge>
+                  )}
+                  <p className="text-sm font-medium mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                    {alert.title}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <Badge variant="secondary" className="text-xs font-semibold">{alert.category}</Badge>
+                    {alert.days_remaining !== undefined && (
+                      <Badge 
+                        variant={alert.days_remaining <= 7 ? 'destructive' : 'secondary'} 
+                        className="text-xs"
+                      >
+                        {alert.days_remaining} jours
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </Card>
       </div>
