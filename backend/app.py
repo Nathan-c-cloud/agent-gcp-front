@@ -10,8 +10,8 @@ import logging
 
 # Import des modules spécialisés
 from modules.alerts import alerts_bp
+from modules.procedures import procedures_bp  # Module des démarches maintenant disponible
 # from modules.settings import settings_bp  # À ajouter par l'ami qui fait settings
-# from modules.procedures import procedures_bp  # À ajouter par l'ami qui fait procedures
 # from modules.watch import watch_bp  # À ajouter par l'ami qui fait watch
 
 app = Flask(__name__)
@@ -36,8 +36,8 @@ def health_check():
         "timestamp": int(__import__('time').time()),
         "modules": {
             "alerts": "active",
+            "procedures": "active",  # Maintenant actif
             "settings": "pending",  # À changer quand le module sera ajouté
-            "procedures": "pending",
             "watch": "pending"
         }
     })
@@ -52,7 +52,7 @@ def api_info():
             "/health": "Health check global",
             "/alerts/*": "Module des alertes (actif)",
             "/settings/*": "Module des paramètres (à venir)",
-            "/procedures/*": "Module des démarches (à venir)", 
+            "/procedures/*": "Module des démarches (actif)", 
             "/watch/*": "Module de veille (à venir)"
         },
         "documentation": "Voir README.md pour les détails"
@@ -65,9 +65,11 @@ def api_info():
 # Module Alertes (déjà implémenté)
 app.register_blueprint(alerts_bp, url_prefix='/alerts')
 
+# Module Procédures/Démarches (maintenant implémenté)
+app.register_blueprint(procedures_bp, url_prefix='/procedures')
+
 # Modules à ajouter par les autres développeurs :
 # app.register_blueprint(settings_bp, url_prefix='/settings')
-# app.register_blueprint(procedures_bp, url_prefix='/procedures')  
 # app.register_blueprint(watch_bp, url_prefix='/watch')
 
 # ============================================================================
@@ -79,7 +81,7 @@ def not_found(error):
     return jsonify({
         "error": "Endpoint non trouvé",
         "message": "Vérifiez l'URL et le module demandé",
-        "available_endpoints": ["/health", "/alerts"]
+        "available_endpoints": ["/health", "/alerts", "/procedures"]
     }), 404
 
 @app.errorhandler(500)
@@ -105,8 +107,8 @@ if __name__ == '__main__':
     logger.info(f"Port: {port}")
     logger.info("Modules actifs:")
     logger.info("  ✅ /alerts - Système d'alertes")
+    logger.info("  ✅ /procedures - Système de démarches")
     logger.info("  ⏳ /settings - À implémenter")
-    logger.info("  ⏳ /procedures - À implémenter")
     logger.info("  ⏳ /watch - À implémenter")
     logger.info("=" * 50)
     

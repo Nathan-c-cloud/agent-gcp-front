@@ -15,11 +15,15 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getSettings } from '../services/settingsService';
+import { useProcedures, ProceduresService, type Procedure } from '../services/proceduresService';
 
 export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }) {
   const [userFirstName, setUserFirstName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Récupérer les vraies données des démarches
+  const { procedures: allProcedures } = useProcedures('test_user');
 
   // Charger les données depuis Firestore
   useEffect(() => {
@@ -44,10 +48,15 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
     loadUserData();
   }, []);
 
+  // Calculer les vraies statistiques
+  const demarchesEnCours = allProcedures.filter(proc => proc.status === 'inprogress').length;
+  const demarchesCompletes = allProcedures.filter(proc => proc.status === 'done').length;
+  const demarchesUrgentes = ProceduresService.countUrgent(allProcedures);
+  
   const stats = [
     {
       label: 'Alertes actives',
-      value: '12',
+      value: '12', // TODO: Remplacer par vraies alertes
       change: '+3 cette semaine',
       trend: 'up',
       icon: AlertCircle,
@@ -57,9 +66,9 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
     },
     {
       label: 'Démarches en cours',
-      value: '5',
-      change: '2 à échéance proche',
-      trend: 'neutral',
+      value: demarchesEnCours.toString(),
+      change: demarchesUrgentes > 0 ? `${demarchesUrgentes} à échéance proche` : 'Aucune urgence',
+      trend: demarchesUrgentes > 0 ? 'neutral' : 'up',
       icon: Clock,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
@@ -67,8 +76,8 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
     },
     {
       label: 'Tâches complétées',
-      value: '24',
-      change: '+8 ce mois',
+      value: demarchesCompletes.toString(),
+      change: `${allProcedures.length} au total`,
       trend: 'up',
       icon: CheckCircle2,
       color: 'text-green-600',
@@ -77,7 +86,7 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
     },
     {
       label: 'Documents traités',
-      value: '156',
+      value: '156', // TODO: Calculer depuis les vraies données si disponible
       change: '+12% vs mois dernier',
       trend: 'up',
       icon: FileText,
@@ -87,11 +96,28 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
     }
   ];
 
-  const urgentTasks = [
-    { title: 'Déclaration TVA', deadline: '15 Oct', status: 'urgent', progress: 30 },
-    { title: 'URSSAF Q4', deadline: '30 Oct', status: 'warning', progress: 60 },
-    { title: 'Bilan comptable', deadline: '20 Oct', status: 'normal', progress: 85 }
-  ];
+  // Calculer les tâches urgentes à partir des vraies données
+  const urgentTasks = allProcedures
+    .filter(proc => proc.status !== 'done') // Uniquement les procédures non terminées
+    .map(proc => {
+      const daysUntil = ProceduresService.getDaysUntilDeadline(proc.deadline);
+      const deadline = new Date(proc.deadline);
+      const isUrgent = ProceduresService.isUrgent(proc);
+      
+      return {
+        id: proc.id,
+        title: proc.name,
+        deadline: deadline.toLocaleDateString('fr-FR', { 
+          day: '2-digit', 
+          month: 'short' 
+        }),
+        status: isUrgent ? 'urgent' : (daysUntil <= 15 ? 'warning' : 'normal'),
+        progress: proc.progress,
+        daysUntil
+      };
+    })
+    .sort((a, b) => a.daysUntil - b.daysUntil) // Trier par échéance la plus proche
+    .slice(0, 3); // Prendre les 3 plus urgentes
 
   const recentAlerts = [
     { title: 'Nouvelle règle URSSAF — cotisations trimestrielles', category: 'RH', urgent: true },
@@ -172,7 +198,18 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
               </Button>
             </div>
             <div className="space-y-4">
-              {urgentTasks.map((task, index) => (
+              {urgentTasks.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="flex flex-col items-center gap-3">
+                    <CheckCircle2 className="size-12 text-green-500" />
+                    <div>
+                      <p className="font-semibold text-gray-900">Aucune démarche urgente !</p>
+                      <p className="text-sm text-gray-600">Toutes vos échéances sont sous contrôle</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                urgentTasks.map((task, index) => (
                 <div
                   key={index}
                   className="group flex items-center justify-between p-5 rounded-xl bg-gray-50 border border-gray-200 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
@@ -198,13 +235,19 @@ export function Dashboard({ onNewDeclaration }: { onNewDeclaration: () => void }
                     {task.status === 'urgent' ? 'Urgent' : task.status === 'warning' ? 'Bientôt' : 'Normal'}
                   </Badge>
                 </div>
-              ))}
+                ))
+              )}
             </div>
-            <div className="mt-6 p-4 rounded-xl bg-green-50 border border-green-200">
-              <p className="text-sm font-medium text-green-900">
-                🎉 Bonne nouvelle ! <span className="font-bold">2 démarches sur 5</span> sont déjà faites
-              </p>
-            </div>
+            {allProcedures.length > 0 && (
+              <div className="mt-6 p-4 rounded-xl bg-green-50 border border-green-200">
+                <p className="text-sm font-medium text-green-900">
+                  🎉 Bonne nouvelle ! <span className="font-bold">{demarchesCompletes} démarches sur {allProcedures.length}</span> sont déjà faites
+                  {demarchesCompletes === allProcedures.length && (
+                    <span> - Tout est à jour ! 🎯</span>
+                  )}
+                </p>
+              </div>
+            )}
           </Card>
 
           {/* Activity Progress */}

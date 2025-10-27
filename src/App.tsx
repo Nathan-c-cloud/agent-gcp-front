@@ -15,12 +15,7 @@ export type Page = 'dashboard' | 'alert' | 'procedures' | 'watch' | 'settings' |
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [selectedAlertId, setSelectedAlertId] = useState<string>('alert-1');
-
-  // TODO: Récupérer depuis le contexte d'authentification
-  const currentUser = {
-    uid: 'test_user',
-    companyId: 'demo_company'
-  };
+  const [selectedDeclarationId, setSelectedDeclarationId] = useState<string | null>(null);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -29,7 +24,18 @@ export default function App() {
       case 'alert':
         return <AlertsList />;
       case 'procedures':
-        return <Procedures onNewDeclaration={() => setCurrentPage('new-declaration')} />;
+        return (
+          <Procedures 
+            onNewDeclaration={() => {
+              setSelectedDeclarationId(null);
+              setCurrentPage('new-declaration');
+            }}
+            onContinueDeclaration={(declarationId: string) => {
+              setSelectedDeclarationId(declarationId);
+              setCurrentPage('new-declaration');
+            }}
+          />
+        );
       case 'watch':
         return <RegulatoryWatch onSelectAlert={(id) => {
           setSelectedAlertId(id);
@@ -40,11 +46,13 @@ export default function App() {
       case 'assistant':
         return <AIAssistant />;
       case 'new-declaration':
-        return <NewDeclaration
-          onClose={() => setCurrentPage('dashboard')}
-          userId={currentUser.uid}
-          companyId={currentUser.companyId}
-        />;
+        return (
+          <NewDeclaration 
+            onClose={() => setCurrentPage('dashboard')} 
+            userId="test_user"
+            companyId="demo_company"
+          />
+        );
       default:
         return <Dashboard onNewDeclaration={() => setCurrentPage('new-declaration')} />;
     }
