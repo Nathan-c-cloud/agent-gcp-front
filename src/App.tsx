@@ -20,7 +20,16 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard onNewDeclaration={() => setCurrentPage('new-declaration')} />;
+        return (
+          <Dashboard 
+            onNewDeclaration={() => {
+              setSelectedDeclarationId(null);
+              setCurrentPage('new-declaration');
+            }}
+            onNavigateToProcedures={() => setCurrentPage('procedures')}
+            onNavigateToAlerts={() => setCurrentPage('alert')}
+          />
+        );
       case 'alert':
         return <AlertsList />;
       case 'procedures':
