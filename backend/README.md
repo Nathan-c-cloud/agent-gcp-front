@@ -62,7 +62,7 @@ pip install -r requirements.txt
 
 ```bash
 # Configurer les variables d'environnement
-export GCP_PROJECT="votre-project-id"
+export GCP_PROJECT="agent-gcp-f6005"
 export ALERT_ENGINE_URL="https://votre-alert-engine-url"
 
 # Lancer l'application

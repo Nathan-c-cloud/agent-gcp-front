@@ -4,40 +4,44 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { Progress } from './ui/progress';
-import { Search, FileText, Archive, AlertCircle, Plus } from 'lucide-react';
-import { procedures } from '../lib/mockData';
+import { Search, FileText, Archive, AlertCircle, Plus, RefreshCw } from 'lucide-react';
+import { 
+  useProcedures, 
+  ProceduresService, 
+  statusConfig, 
+  typeColors,
+  type ProcedureType,
+  type ProcedureStatus
+} from '../services/proceduresService';
 
-export function Procedures({ onNewDeclaration }: { onNewDeclaration: () => void }) {
+export function Procedures({ 
+  onNewDeclaration, 
+  onContinueDeclaration 
+}: { 
+  onNewDeclaration: () => void;
+  onContinueDeclaration: (declarationId: string) => void;
+}) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterType, setFilterType] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<ProcedureStatus | 'all'>('all');
+  const [filterType, setFilterType] = useState<ProcedureType | 'all'>('all');
 
-  const filteredProcedures = procedures.filter(proc => {
-    const matchesSearch = proc.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || proc.status === filterStatus;
-    const matchesType = filterType === 'all' || proc.type === filterType;
-    return matchesSearch && matchesStatus && matchesType;
-  });
+  // Utiliser le hook pour récupérer les vraies données (sans filtrer par user_id)
+  const { procedures: allProcedures, loading, error, refresh } = useProcedures();
 
-  const statusConfig = {
-    todo: { label: '🟡 À faire', color: 'bg-yellow-500', variant: 'secondary' as const, progress: 0 },
-    inprogress: { label: '🔴 En attente', color: 'bg-red-500', variant: 'destructive' as const, progress: 50 },
-    done: { label: '🟢 Terminé', color: 'bg-green-500', variant: 'default' as const, progress: 100 }
-  };
+  // Filtrage des données
+  let filteredProcedures = allProcedures;
+  
+  // Filtrer par recherche
+  filteredProcedures = ProceduresService.search(filteredProcedures, searchQuery);
+  
+  // Filtrer par statut
+  filteredProcedures = ProceduresService.filterByStatus(filteredProcedures, filterStatus);
+  
+  // Filtrer par type
+  filteredProcedures = ProceduresService.filterByType(filteredProcedures, filterType);
 
-  const typeColors: Record<string, { bg: string; border: string }> = {
-    Fiscal: { bg: 'bg-blue-500', border: '#3B82F6' },
-    Social: { bg: 'bg-green-500', border: '#10B981' },
-    Comptable: { bg: 'bg-purple-500', border: '#A855F7' },
-    Juridique: { bg: 'bg-orange-500', border: '#F97316' }
-  };
-
-  // Check for urgent deadlines
-  const urgentCount = filteredProcedures.filter(proc => {
-    const deadline = new Date(proc.deadline);
-    const daysUntil = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    return daysUntil <= 7 && proc.status !== 'done';
-  }).length;
+  // Compter les démarches urgentes
+  const urgentCount = ProceduresService.countUrgent(filteredProcedures);
 
   return (
     <div className="min-h-full bg-gray-50 p-12 animate-in fade-in duration-500 relative overflow-hidden">
@@ -50,17 +54,46 @@ export function Procedures({ onNewDeclaration }: { onNewDeclaration: () => void 
                 <span className="text-3xl">📁</span>
               </div>
               <h1 className="text-3xl tracking-tight font-bold">Mes démarches administratives</h1>
+              {loading && (
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              )}
             </div>
-            <Button 
-              onClick={onNewDeclaration}
-              className="gap-2 bg-green-600 hover:bg-green-700 shadow-lg transition-all hover:scale-105 rounded-xl px-6 h-12"
-            >
-              <Plus className="size-5" />
-              <span className="font-semibold">➕ Nouvelle déclaration</span>
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={refresh}
+                variant="outline"
+                className="gap-2 shadow-lg transition-all hover:scale-105 rounded-xl px-4 h-12"
+                disabled={loading}
+              >
+                <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+                Actualiser
+              </Button>
+              <Button 
+                onClick={onNewDeclaration}
+                className="gap-2 bg-green-600 hover:bg-green-700 shadow-lg transition-all hover:scale-105 rounded-xl px-6 h-12"
+              >
+                <Plus className="size-5" />
+                <span className="font-semibold">➕ Nouvelle déclaration</span>
+              </Button>
+            </div>
           </div>
           <div className="h-1.5 w-40 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full mb-4 shadow-lg" />
           
+          {error && (
+            <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 flex items-center gap-3">
+              <AlertCircle className="size-5 text-red-600" />
+              <div>
+                <p className="text-sm font-semibold text-red-900">
+                  Erreur lors du chargement des démarches
+                </p>
+                <p className="text-xs text-red-700">{error}</p>
+              </div>
+              <Button onClick={refresh} size="sm" variant="outline" className="ml-auto">
+                Réessayer
+              </Button>
+            </div>
+          )}
+
           {urgentCount > 0 && (
             <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 flex items-center gap-3">
               <AlertCircle className="size-5 text-red-600" />
@@ -161,17 +194,24 @@ export function Procedures({ onNewDeclaration }: { onNewDeclaration: () => void 
         {/* Cards Grid */}
         <div className="space-y-4">
           {filteredProcedures.map((proc, index) => {
+            const daysUntil = ProceduresService.getDaysUntilDeadline(proc.deadline);
+            const isUrgent = ProceduresService.isUrgent(proc);
             const deadline = new Date(proc.deadline);
-            const daysUntil = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-            const isUrgent = daysUntil <= 7 && proc.status !== 'done';
             
             return (
               <Card
                 key={proc.id}
-                className="p-6 bg-white rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border-0 relative overflow-hidden group animate-in fade-in slide-in-from-bottom-2"
+                className={`p-6 bg-white rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-0 relative overflow-hidden group animate-in fade-in slide-in-from-bottom-2 ${
+                  proc.status === 'done' ? 'cursor-default opacity-75' : 'cursor-pointer'
+                }`}
                 style={{ 
                   animationDelay: `${index * 50}ms`,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                }}
+                onClick={() => {
+                  if (proc.status !== 'done') {
+                    onContinueDeclaration(proc.id);
+                  }
                 }}
               >
                 {/* Left colored bar */}
@@ -219,22 +259,35 @@ export function Procedures({ onNewDeclaration }: { onNewDeclaration: () => void 
                       </Badge>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Progress value={statusConfig[proc.status].progress} className="h-3 flex-1" />
-                      <span className="text-sm font-bold text-muted-foreground">{statusConfig[proc.status].progress}%</span>
+                      <Progress value={proc.progress} className="h-3 flex-1" />
+                      <span className="text-sm font-bold text-muted-foreground">{proc.progress}%</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Étape {proc.current_step} / {proc.total_steps}
                     </div>
                   </div>
 
                   {/* Action */}
                   <div className="min-w-[130px] text-right">
                     {proc.status === 'done' ? (
-                      <Button variant="ghost" size="sm" className="gap-2 hover:shadow-md hover:scale-105 transition-all rounded-xl font-semibold">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="gap-2 hover:shadow-md hover:scale-105 transition-all rounded-xl font-semibold cursor-default opacity-50"
+                        disabled
+                      >
                         <Archive className="size-4" />
-                        Archiver
+                        Terminé
                       </Button>
                     ) : (
-                      <Button variant="ghost" size="sm" className="gap-2 hover:shadow-md hover:scale-105 transition-all rounded-xl font-semibold hover:bg-blue-50 hover:text-blue-700">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="gap-2 hover:shadow-md hover:scale-105 transition-all rounded-xl font-semibold hover:bg-blue-50 hover:text-blue-700"
+                        onClick={() => onContinueDeclaration(proc.id)}
+                      >
                         <FileText className="size-4" />
-                        Détails
+                        Continuer
                       </Button>
                     )}
                   </div>

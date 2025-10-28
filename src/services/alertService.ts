@@ -182,6 +182,70 @@ class AlertService {
   }
 
   /**
+   * Déclenche l'alert-engine pour scanner les tasks et créer des alertes
+   * 
+   * @param options Options de déclenchement
+   * @returns Le résultat du déclenchement
+   */
+  async triggerAlertEngine(options: {
+    limit?: number;
+    dryRun?: boolean;
+    taskId?: string;
+    task?: any;
+  } = {}): Promise<{
+    success: boolean;
+    mode: 'scan' | 'single_task';
+    result: any;
+    timestamp: string;
+  }> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (options.limit) {
+        params.append('limit', options.limit.toString());
+      }
+      
+      if (options.dryRun) {
+        params.append('dry_run', 'true');
+      }
+      
+      const queryString = params.toString();
+      const url = queryString ? `${this.baseUrl}/alerts/trigger?${queryString}` : `${this.baseUrl}/alerts/trigger`;
+      
+      // Si taskId est fourni, mode single task (POST avec body)
+      const body = (options.taskId || options.task) ? {
+        task_id: options.taskId,
+        task: options.task
+      } : undefined;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: body ? {
+          'Content-Type': 'application/json',
+        } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to trigger alert-engine: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`✅ Alert-engine déclenché avec succès (${result.mode})`);
+      } else {
+        console.warn(`⚠️ Alert-engine a échoué:`, result);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('❌ Erreur lors du déclenchement de l\'alert-engine:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Trie les alertes par priorité puis par date d'échéance
    */
   sortAlerts(alerts: Alert[]): Alert[] {
@@ -213,11 +277,12 @@ class AlertService {
 export const alertService = new AlertService();
 
 // Hook React personnalisé pour utiliser les alertes
-export function useAlerts() {
+export function useAlerts(autoTrigger: boolean = true) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<AlertsResponse | null>(null);
+  const [engineTriggered, setEngineTriggered] = useState(false);
 
   const fetchAlerts = useCallback(async (syncMode: boolean = false, ttlOverride?: number) => {
     try {
@@ -240,6 +305,24 @@ export function useAlerts() {
     fetchAlerts(false, 0); // Force refresh
   }, [fetchAlerts]);
 
+  // Déclencher l'alert-engine au montage du composant (une seule fois)
+  useEffect(() => {
+    if (autoTrigger && !engineTriggered) {
+      console.log('🚀 Déclenchement automatique de l\'alert-engine...');
+      alertService.triggerAlertEngine({ limit: 50 })
+        .then((result) => {
+          console.log('✅ Alert-engine déclenché:', result);
+          setEngineTriggered(true);
+          // Rafraîchir les alertes après le déclenchement
+          setTimeout(() => fetchAlerts(), 1000);
+        })
+        .catch((err) => {
+          console.error('❌ Erreur déclenchement alert-engine:', err);
+          setEngineTriggered(true); // Éviter de réessayer infiniment
+        });
+    }
+  }, [autoTrigger, engineTriggered, fetchAlerts]);
+
   useEffect(() => {
     fetchAlerts();
   }, [fetchAlerts]);
@@ -251,8 +334,10 @@ export function useAlerts() {
     metadata: response?.metadata || null,
     triggered: response?.triggered || false,
     trigger_mode: response?.trigger_mode || null,
+    engineTriggered,
     refreshAlerts,
-    fetchAlerts
+    fetchAlerts,
+    triggerEngine: () => alertService.triggerAlertEngine()
   };
 }
 

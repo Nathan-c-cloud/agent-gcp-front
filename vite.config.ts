@@ -58,10 +58,35 @@ export default defineConfig({
         port: 3000,
         open: true,
         proxy: {
-            '/api': {
+            '/api/pdf-generator': {
+                target: 'https://pdf-generator-478570587937.us-west1.run.app',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api\/pdf-generator/, ''),
+                secure: false
+            },
+            '/api/saas': {
+                target: 'https://us-west1-agent-gcp-f6005.cloudfunctions.net/saas-integrations-api',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api\/saas/, ''),
+                secure: false
+            },
+            '/api/agent-fiscal': {
+                target: 'https://us-west1-agent-gcp-f6005.cloudfunctions.net/agent-fiscal-v2',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api\/agent-fiscal/, ''),
+                secure: false
+            },
+            '/api/procedures': {
                 target: 'http://localhost:8080',
                 changeOrigin: true,
-                rewrite: (path) => path.replace(/^\/api/, '')
+                rewrite: (path) => path.replace(/^\/api\/procedures/, '/procedures'),
+                secure: false
+            },
+            '/api/alerts': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api\/alerts/, '/alerts'),
+                secure: false
             }
         }
     },
