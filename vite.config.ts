@@ -75,6 +75,18 @@ export default defineConfig({
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api\/agent-fiscal/, ''),
                 secure: false
+            },
+            '/api/procedures': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api\/procedures/, '/procedures'),
+                secure: false
+            },
+            '/api/alerts': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api\/alerts/, '/alerts'),
+                secure: false
             }
         }
     },

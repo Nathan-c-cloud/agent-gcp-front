@@ -16,6 +16,7 @@ import logging
 import os
 from datetime import datetime
 import json
+from .alert_engine import trigger_alert_engine_scan, trigger_alert_engine_single_task
 
 # Créer le blueprint pour les alertes
 alerts_bp = Blueprint('alerts', __name__)
@@ -349,6 +350,73 @@ def alerts_config():
             "call_timeout_seconds": CALL_TIMEOUT_SECONDS
         }
     })
+
+# ============================================================================
+# ENDPOINT ALERT-ENGINE TRIGGER
+# ============================================================================
+
+@alerts_bp.route('/trigger', methods=['POST'])
+def trigger_alert_engine():
+    """
+    Déclenche l'alert-engine pour scanner les tasks et créer des alertes
+    
+    Query params:
+        - limit: Nombre max de tasks à traiter (optionnel)
+        - dry_run: true/false pour simuler sans créer (optionnel)
+        
+    Body (optionnel pour single task mode):
+        {
+            "task_id": "...",
+            "task": {...}
+        }
+    """
+    try:
+        # Paramètres de query
+        limit = request.args.get('limit', type=int, default=0)
+        dry_run = request.args.get('dry_run', '').lower() in ('true', '1', 'yes')
+        
+        # Vérifier si c'est un appel single task
+        body = request.get_json(silent=True) or {}
+        
+        if body.get('task_id') or body.get('task'):
+            # Mode single task
+            task_id = body.get('task_id')
+            task = body.get('task', {})
+            
+            if not task_id:
+                return jsonify({
+                    'success': False,
+                    'error': 'task_id requis pour le mode single task'
+                }), 400
+            
+            logger.info(f"🔥 Déclenchement alert-engine (single task): {task_id}")
+            result = trigger_alert_engine_single_task(task_id, task, dry_run=dry_run)
+            
+            return jsonify({
+                'success': result.get('status') == 'ok',
+                'mode': 'single_task',
+                'result': result,
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            # Mode scan
+            logger.info(f"🔥 Déclenchement alert-engine (scan mode) - limit={limit}")
+            result = trigger_alert_engine_scan(limit=limit, dry_run=dry_run)
+            
+            return jsonify({
+                'success': result.get('status') == 'ok',
+                'mode': 'scan',
+                'result': result,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+    except Exception as e:
+        logger.error(f"❌ Erreur lors du déclenchement de l'alert-engine: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
 
 # ============================================================================
 # ENDPOINTS DE TEST/DEBUG (optionnels)

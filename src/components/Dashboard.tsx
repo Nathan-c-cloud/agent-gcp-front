@@ -31,9 +31,10 @@ export function Dashboard({
   const [companyName, setCompanyName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   
-  // Récupérer les vraies données des démarches et des alertes
-  const { procedures: allProcedures } = useProcedures('test_user');
-  const { alerts: allAlerts } = useAlerts();
+  // Récupérer les vraies données des démarches et des alertes (sans filtrer par user_id)
+  // Ne pas déclencher l'alert-engine depuis le Dashboard (seulement depuis AlertsList)
+  const { procedures: allProcedures } = useProcedures();
+  const { alerts: allAlerts } = useAlerts(false);
 
   // Charger les données depuis Firestore
   useEffect(() => {
