@@ -7,6 +7,10 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import logging
+from dotenv import load_dotenv
+
+# Charger les variables d'environnement depuis le fichier .env
+load_dotenv()
 
 # Import des modules spécialisés
 from modules.alerts import alerts_bp
