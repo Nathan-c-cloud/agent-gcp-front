@@ -25,14 +25,26 @@ pip install -r requirements.txt
 
 ```bash
 # Toujours depuis le dossier backend/
+
+# Étape 1 : Créer le fichier .env depuis le template
+cp .env.example .env
+
+# Étape 2 : Générer le service account et les credentials
 bash setup_service_account.sh
 ```
 
-✅ Ce script fait TOUT automatiquement :
+✅ Ce que fait `setup_service_account.sh` :
 - Crée le service account Google Cloud
-- Génère la clé JSON
-- Configure le fichier `.env` avec les credentials
+- Génère la clé JSON `service-account-key.json`
+- Crée un fichier `.env.local` avec `GOOGLE_SERVICE_ACCOUNT_JSON`
 - Configure les permissions
+
+⚠️ **Action manuelle requise** : Copiez la ligne `GOOGLE_SERVICE_ACCOUNT_JSON` depuis `.env.local` vers votre `.env`
+
+```bash
+# La ligne à copier ressemble à :
+# GOOGLE_SERVICE_ACCOUNT_JSON='{"type":"service_account","project_id":"agent-gcp-f6005",...}'
+```
 
 ### 3️⃣ Lancer le backend
 
@@ -116,8 +128,17 @@ npm install
 
 # Backend
 cd backend
-pip install -r requirements.txt
+
+# 1. Créer le fichier .env
+cp .env.example .env
+
+# 2. Générer les credentials
 bash setup_service_account.sh
+
+# 3. Copier GOOGLE_SERVICE_ACCOUNT_JSON depuis .env.local vers .env
+# Ouvrir .env.local, copier la ligne GOOGLE_SERVICE_ACCOUNT_JSON='...'
+# et la coller à la fin de votre fichier .env
+
 cd ..
 ```
 
@@ -140,9 +161,20 @@ npm run dev
 
 ### "Impossible d'obtenir un token Google ID"
 
+**Solution** :
 ```bash
 cd backend
+
+# 1. Vérifier que .env existe
+ls -la .env
+
+# 2. Régénérer les credentials
 bash setup_service_account.sh
+
+# 3. Copier GOOGLE_SERVICE_ACCOUNT_JSON depuis .env.local vers .env
+# Ouvrir .env.local, copier la ligne complète et la coller dans .env
+
+# 4. Redémarrer le serveur
 python app.py
 ```
 
@@ -185,7 +217,9 @@ export PORT=8081
 Installation initiale (1 fois) :
 - [ ] `npm install` (frontend)
 - [ ] `pip install -r requirements.txt` (backend)
+- [ ] `cp .env.example .env` (backend)
 - [ ] `bash setup_service_account.sh` (backend)
+- [ ] Copier `GOOGLE_SERVICE_ACCOUNT_JSON` depuis `.env.local` vers `.env`
 
 Lancement quotidien :
 - [ ] Terminal 1 : `cd backend && python app.py`
