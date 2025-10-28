@@ -197,10 +197,12 @@ def get_procedures():
     """Endpoint principal pour récupérer les démarches"""
     try:
         # Paramètres optionnels
-        user_id = request.args.get('user_id', 'test_user')
-        
-        logger.info(f"Récupération des démarches pour user_id: {user_id}")
-        
+        # Par défaut on ne filtre pas par user_id (None) pour éviter d'ignorer
+        # les documents réels qui ont d'autres valeurs comme 'gemini_detection'.
+        user_id = request.args.get('user_id', None)
+
+        logger.info(f"Récupération des démarches pour user_id: {user_id if user_id else 'ALL'}")
+
         # Récupérer depuis Firestore
         procedures = get_procedures_from_firestore(user_id)
         

@@ -94,7 +94,7 @@ function transformExistingDataToProcedures(rawProcedures: any[]): Procedure[] {
 /**
  * Hook React pour gérer les démarches
  */
-export function useProcedures(userId: string = 'test_user') {
+export function useProcedures(userId?: string) {
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,15 +105,20 @@ export function useProcedures(userId: string = 'test_user') {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams({
-        user_id: userId
-      });
+      const params = new URLSearchParams();
+      
+      // N'ajouter user_id que s'il est fourni (sinon récupère toutes les démarches)
+      if (userId) {
+        params.append('user_id', userId);
+      }
       
       if (forceRefresh) {
         params.append('refresh', 'true');
       }
 
-      const response = await fetch(`/api/procedures/?${params.toString()}`);
+      const queryString = params.toString();
+      const url = queryString ? `/api/procedures/?${queryString}` : '/api/procedures/';
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
@@ -175,10 +180,18 @@ export class ProceduresService {
   /**
    * Récupère toutes les démarches pour un utilisateur
    */
-  static async getProcedures(userId: string = 'test_user'): Promise<Procedure[]> {
+  static async getProcedures(userId?: string): Promise<Procedure[]> {
     try {
-      const params = new URLSearchParams({ user_id: userId });
-      const response = await fetch(`${this.BASE_URL}/?${params.toString()}`);
+      const params = new URLSearchParams();
+      
+      // N'ajouter user_id que s'il est fourni
+      if (userId) {
+        params.append('user_id', userId);
+      }
+      
+      const queryString = params.toString();
+      const url = queryString ? `${this.BASE_URL}/?${queryString}` : `${this.BASE_URL}/`;
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);

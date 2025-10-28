@@ -25,8 +25,8 @@ export function Procedures({
   const [filterStatus, setFilterStatus] = useState<ProcedureStatus | 'all'>('all');
   const [filterType, setFilterType] = useState<ProcedureType | 'all'>('all');
 
-  // Utiliser le hook pour récupérer les vraies données
-  const { procedures: allProcedures, loading, error, refresh } = useProcedures('test_user');
+  // Utiliser le hook pour récupérer les vraies données (sans filtrer par user_id)
+  const { procedures: allProcedures, loading, error, refresh } = useProcedures();
 
   // Filtrage des données
   let filteredProcedures = allProcedures;
