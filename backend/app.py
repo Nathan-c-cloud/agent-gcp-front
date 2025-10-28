@@ -14,6 +14,7 @@ load_dotenv()
 
 # Import des modules spécialisés
 from modules.alerts import alerts_bp
+from modules.veille import veille_bp
 from modules.procedures import procedures_bp  # Module des démarches maintenant disponible
 # from modules.settings import settings_bp  # À ajouter par l'ami qui fait settings
 # from modules.watch import watch_bp  # À ajouter par l'ami qui fait watch
@@ -40,6 +41,7 @@ def health_check():
         "timestamp": int(__import__('time').time()),
         "modules": {
             "alerts": "active",
+            "veille": "active",
             "procedures": "active",  # Maintenant actif
             "settings": "pending",  # À changer quand le module sera ajouté
             "watch": "pending"
@@ -55,6 +57,7 @@ def api_info():
         "endpoints": {
             "/health": "Health check global",
             "/alerts/*": "Module des alertes (actif)",
+            "/veille/*": "Module de veille réglementaire (actif)",
             "/settings/*": "Module des paramètres (à venir)",
             "/procedures/*": "Module des démarches (actif)", 
             "/watch/*": "Module de veille (à venir)"
@@ -69,6 +72,12 @@ def api_info():
 # Module Alertes (déjà implémenté)
 app.register_blueprint(alerts_bp, url_prefix='/alerts')
 
+# Module Veille
+app.register_blueprint(veille_bp, url_prefix='/veille')
+
+# Modules à ajouter par les autres développeurs :
+# app.register_blueprint(settings_bp, url_prefix='/settings')
+# app.register_blueprint(procedures_bp, url_prefix='/procedures')
 # Module Procédures/Démarches (maintenant implémenté)
 app.register_blueprint(procedures_bp, url_prefix='/procedures')
 
@@ -85,7 +94,7 @@ def not_found(error):
     return jsonify({
         "error": "Endpoint non trouvé",
         "message": "Vérifiez l'URL et le module demandé",
-        "available_endpoints": ["/health", "/alerts", "/procedures"]
+        "available_endpoints": ["/health", "/alerts", "/veille", "/procedures"]
     }), 404
 
 @app.errorhandler(500)
@@ -104,16 +113,18 @@ if __name__ == '__main__':
     # Variables d'environnement communes
     port = int(os.getenv('PORT', 8080))
     debug = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
-    
+
     logger.info("🚀 Démarrage du Backend Agent GCP")
     logger.info("=" * 50)
     logger.info(f"Mode: {'Debug' if debug else 'Production'}")
     logger.info(f"Port: {port}")
     logger.info("Modules actifs:")
     logger.info("  ✅ /alerts - Système d'alertes")
+    logger.info("  ✅ /veille - Veille réglementaire")
+    logger.info("  ⏳ /settings - Paramètres (à implémenter)")
     logger.info("  ✅ /procedures - Système de démarches")
-    logger.info("  ⏳ /settings - À implémenter")
     logger.info("  ⏳ /watch - À implémenter")
     logger.info("=" * 50)
-    
+
     app.run(host='0.0.0.0', port=port, debug=debug)
+

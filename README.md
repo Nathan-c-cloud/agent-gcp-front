@@ -6,7 +6,8 @@ Application React/TypeScript pour la gestion des alertes avec backend Flask et i
 ## 🚀 Fonctionnalités
 
 - **Interface d'alertes** : Liste et détail des alertes avec données temps réel
-- **Backend Flask** : API REST avec intégration Firestore et alert-engine
+- **Veille réglementaire** : Surveillance automatique des nouvelles réglementations fiscales via agent IA
+- **Backend Flask** : API REST modulaire avec intégration Firestore et alert-engine
 - **Données réelles** : Connexion à Google Cloud Firestore et services Cloud Functions
 - **Proxy intelligent** : Redirection automatique des appels API frontend → backend
 - **Types TypeScript** : Interfaces complètes pour un développement robuste
@@ -274,15 +275,20 @@ Cette configuration :
 ```
 ┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐    ┌──────────────────┐
 │   Frontend      │    │ Proxy Vite   │    │ Backend Flask   │    │ Google Cloud     │
-│   React/TS      │◄──►│ /api/* →     │◄──►│ Port 8080       │◄──►│ Firestore +      │
+│   Port 3000     │    │ :8080        │    │ Modules:        │    │ Cloud Functions: │
+│                 │    │              │    │ - alerts        │    │ - alert-engine   │
+│                 │    │              │    │ - veille        │    │ - agent-fiscal   │
 │   Port 3000     │    │ :8080        │    │ app.py          │    │ Alert-Engine     │
 └─────────────────┘    └──────────────┘    └─────────────────┘    └──────────────────┘
 ```
 
 ### Composants principaux
-
+- **RegulatoryWatch** : Interface de veille réglementaire
+- **AlertService** : Service API avec hooks React pour les alertes
+- **VeilleService** : Service API avec hooks React pour la veille réglementaire
 - **AlertsList** : Interface de liste des alertes
 - **AlertDetail** : Vue détaillée d'une alerte (existant, préservé)
+#### Module Alertes
 - **AlertService** : Service API avec hooks React
 - **AlertAdapter** : Transformation des données Firestore → UI
 
@@ -290,10 +296,46 @@ Cette configuration :
 
 1. Frontend appelle `/api/alerts`
 2. Proxy Vite redirige vers `localhost:8080/alerts` 
+#### Module Veille
+1. Frontend appelle `/api/veille/company/{companyId}`
+2. Proxy Vite redirige vers `localhost:8080/veille/company/{companyId}`
+3. Backend récupère le profil entreprise dans Firestore
+4. Backend appelle l'agent fiscal pour analyser les nouvelles réglementations
+5. Nouvelles alertes de veille créées dans Firestore
+6. Alertes retournées au frontend pour affichage
+
 3. Backend Flask interroge Firestore
 4. Backend déclenche alert-engine si TTL expiré
 5. Données formatées retournées au frontend
 6. AlertAdapter convertit pour AlertDetail
+## Module Veille Réglementaire
+
+Le module de veille permet à l'agent fiscal d'analyser automatiquement les nouvelles réglementations pertinentes pour chaque entreprise.
+
+### Fonctionnement
+
+1. **Profil entreprise** : Chaque entreprise a son profil dans Firestore (secteur, régime fiscal, etc.)
+2. **Analyse automatique** : L'agent fiscal interroge Cloud Storage pour détecter de nouvelles réglementations
+3. **Alertes personnalisées** : Les nouvelles réglementations sont stockées comme alertes de type "veille"
+4. **Affichage front** : L'onglet "Veille" affiche les alertes pertinentes
+
+### Endpoints API
+
+- `GET /veille/company/{companyId}` - Récupère les alertes de veille
+- `POST /veille/analyser/{companyId}` - Lance une analyse via l'agent fiscal  
+- `PUT /veille/marquer-lu/{alerteId}` - Marque une alerte comme lue
+
+### Données de test
+
+Pour créer des données de test dans Firestore :
+
+```bash
+cd backend
+python scripts/seed_veille_data.py
+```
+
+Voir `INTEGRATION_VEILLE.md` pour plus de détails.
+
 
 ## Technologies utilisées
 
