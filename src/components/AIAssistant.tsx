@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react';
+import {useState, useEffect, JSX} from 'react';
 import {Card} from './ui/card';
 import {Button} from './ui/button';
 import {Input} from './ui/input';
@@ -316,7 +316,7 @@ export function AIAssistant() {
         // Add user message
         setMessages(prev => [...prev, {role: 'user', content: messageText}]);
         setInputValue('');
-        setIsTyping(true); // Affiche "Simplify écrit..."
+        setIsTyping(true); // Affiche "Optimious écrit..."
 
         // Au lieu de simuler, on appelle la vraie API
         try {
@@ -382,8 +382,13 @@ export function AIAssistant() {
                         <div className="flex items-center gap-5 relative">
                             <div className="relative">
                                 <div
-                                    className="size-20 rounded-2xl bg-gradient-to-br from-[#2563EB] via-[#7C3AED] to-[#DB2777] flex items-center justify-center shadow-lg animate-float">
-                                    <Sparkles className="size-10 text-white"/>
+                                    className="size-20 rounded-2xl bg-white flex items-center justify-center shadow-lg animate-float p-3">
+                                    <img 
+                                        src="/img.png" 
+                                        alt="Optimious Bot" 
+                                        className="w-full h-full object-contain"
+                                        style={{ filter: 'drop-shadow(0 0 4px rgba(37, 99, 235, 0.4))' }}
+                                    />
                                 </div>
                                 <div
                                     className="absolute inset-0 rounded-2xl bg-[#2563EB] blur-xl opacity-50 animate-pulse"/>
@@ -391,7 +396,7 @@ export function AIAssistant() {
                                     className="absolute -top-1 -right-1 size-4 rounded-full bg-green-500 border-2 border-white animate-pulse shadow-lg"/>
                             </div>
                             <div>
-                                <h2 className="tracking-tight mb-1">Simplify Bot</h2>
+                                <h2 className="tracking-tight mb-1">Optimious Bot</h2>
                                 <p className="text-base text-muted-foreground font-medium">
                                     👋 Bonjour {userFirstName}, je suis prêt à t'aider dans ta paperasse !
                                 </p>
@@ -413,8 +418,13 @@ export function AIAssistant() {
                                 className={`flex items-end gap-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                                 {message.role === 'assistant' && (
                                     <div
-                                        className="size-10 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center shrink-0 shadow-lg">
-                                        <Sparkles className="size-5 text-white"/>
+                                        className="size-10 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-lg p-1.5">
+                                        <img 
+                                            src="/img.png" 
+                                            alt="Optimious Bot" 
+                                            className="w-full h-full object-contain"
+                                            style={{ filter: 'drop-shadow(0 0 2px rgba(37, 99, 235, 0.3))' }}
+                                        />
                                     </div>
                                 )}
                                 <Card
@@ -439,8 +449,13 @@ export function AIAssistant() {
                         <div className="flex justify-start animate-in fade-in slide-in-from-bottom-2">
                             <div className="flex items-end gap-3 max-w-[80%]">
                                 <div
-                                    className="size-10 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center shrink-0 shadow-lg">
-                                    <Sparkles className="size-5 text-white"/>
+                                    className="size-10 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-lg p-1.5">
+                                    <img 
+                                        src="/img.png" 
+                                        alt="Optimious Bot" 
+                                        className="w-full h-full object-contain"
+                                        style={{ filter: 'drop-shadow(0 0 2px rgba(37, 99, 235, 0.3))' }}
+                                    />
                                 </div>
                                 <Card
                                     className="p-4 rounded-2xl border-0 bg-gradient-to-br from-blue-50 to-purple-50 shadow-soft-lg">
@@ -459,7 +474,7 @@ export function AIAssistant() {
                                                 style={{animationDelay: '300ms'}}
                                             />
                                         </div>
-                                        <span className="text-sm text-muted-foreground">Simplify écrit...</span>
+                                        <span className="text-sm text-muted-foreground">Optimious écrit...</span>
                                     </div>
                                 </Card>
                             </div>

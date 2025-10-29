@@ -270,8 +270,13 @@ export function RegulatoryWatch({ }: RegulatoryWatchProps) {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-3">
-            <div className="relative p-3 rounded-xl bg-gradient-to-br from-blue-100 to-purple-100 shadow-lg">
-              <Zap className="size-7 text-blue-600" />
+            <div className="relative p-3 rounded-xl bg-white shadow-lg">
+              <img 
+                src="/img.png" 
+                alt="Veille Icon" 
+                className="size-7 object-contain relative z-10"
+                style={{ filter: 'drop-shadow(0 0 3px rgba(37, 99, 235, 0.4))' }}
+              />
               <div className="absolute inset-0 bg-blue-400 rounded-xl blur-lg opacity-40 animate-pulse" />
             </div>
             <h1 className="tracking-tight">Veille réglementaire complète</h1>
