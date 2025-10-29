@@ -79,7 +79,7 @@ export default function App() {
     return (
         <AuthProvider>
             <AuthGuard>
-                <div className="h-screen w-screen flex bg-gradient-to-br from-blue-50 via-white to-purple-50">
+                <div className="h-full w-full flex bg-gradient-to-br from-blue-50 via-white to-purple-50">
                     <Navigation
                         currentPage={currentPage}
                         onNavigate={setCurrentPage}
