@@ -43,7 +43,7 @@ export function Navigation({currentPage, onNavigate, items}: NavigationProps) {
     }, [currentUser]);
 
     return (
-        <nav className="w-72 bg-white border-r border-gray-200 p-8 flex flex-col gap-2">
+        <nav className="w-72 h-full bg-white border-r border-gray-200 p-8 flex flex-col gap-2">
             <div className="mb-10">
                 <div className="flex items-center gap-3 mb-2">
                     <div className="relative size-10 rounded-xl flex items-center justify-center">
