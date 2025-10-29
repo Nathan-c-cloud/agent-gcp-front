@@ -14,9 +14,9 @@ import {
   Plus
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getSettings } from '../services/settingsService';
 import { useProcedures, ProceduresService, type Procedure } from '../services/proceduresService';
 import { useAlerts, alertService, type Alert } from '../services/alertService';
+import { useAuth } from '../contexts/AuthContext';
 
 export function Dashboard({ 
   onNewDeclaration,
@@ -27,6 +27,7 @@ export function Dashboard({
   onNavigateToProcedures?: () => void;
   onNavigateToAlerts?: () => void;
 }) {
+  const { currentUser } = useAuth();
   const [userFirstName, setUserFirstName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -36,28 +37,21 @@ export function Dashboard({
   const { procedures: allProcedures } = useProcedures();
   const { alerts: allAlerts } = useAlerts(false);
 
-  // Charger les données depuis Firestore
+  // Charger les données depuis le contexte d'auth
   useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const companyId = "demo_company"; // TODO: Récupérer depuis le contexte d'authentification
-        const settings = await getSettings(companyId);
+    if (!currentUser) {
+      setIsLoading(false);
+      return;
+    }
 
-        if (settings) {
-          setUserFirstName(settings.representative.prenom || 'Utilisateur');
-          setCompanyName(settings.company_info.nom || 'Votre entreprise');
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-        setUserFirstName('Utilisateur');
-        setCompanyName('Votre entreprise');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadUserData();
-  }, []);
+    // Extraire le prénom depuis l'email (avant le @)
+    const emailPrefix = currentUser.email.split('@')[0];
+    const firstName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+    
+    setUserFirstName(firstName);
+    setCompanyName(currentUser.companyId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
+    setIsLoading(false);
+  }, [currentUser]);
 
   // Calculer les vraies statistiques
   const demarchesEnCours = allProcedures.filter(proc => proc.status === 'inprogress').length;

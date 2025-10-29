@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -84,11 +85,17 @@ const declarationTypes = [
 
 interface NewDeclarationProps {
   onClose: () => void;
-  userId: string;
-  companyId: string;
 }
 
-export function NewDeclaration({ onClose, userId, companyId }: NewDeclarationProps) {
+export function NewDeclaration({ onClose }: NewDeclarationProps) {
+  const { currentUser } = useAuth();
+  
+  if (!currentUser) {
+    return null; // Ou redirection vers auth
+  }
+  
+  const userId = currentUser.uid;
+  const companyId = currentUser.companyId;
   const [currentStep, setCurrentStep] = useState<Step>('selection');
   const [selectedType, setSelectedType] = useState<DeclarationType>(null);
   const [confirmed, setConfirmed] = useState(false);
