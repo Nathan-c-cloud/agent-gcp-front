@@ -39,7 +39,30 @@ def transform_firestore_to_frontend(doc_data, doc_id):
     try:
         # Calculer la progression basée sur les étapes
         current_step = doc_data.get('current_step', 0)
-        total_steps = doc_data.get('total_steps', 5)
+        total_steps = doc_data.get('total_steps')
+        
+        # S'assurer que current_step et total_steps sont des entiers
+        try:
+            current_step = int(current_step) if current_step is not None else 0
+        except (ValueError, TypeError):
+            logger.warning(f"Valeur non numérique détectée pour current_step: {current_step}")
+            current_step = 0
+            
+        # Si total_steps n'est pas défini, définir une valeur par défaut basée sur le type
+        if total_steps is None:
+            type_defaults = {
+                'tva': 1,  # TVA est généralement une étape unique
+                'urssaf': 3,  # URSSAF peut avoir plusieurs étapes
+                'aides': 4,   # Aides ont souvent plusieurs étapes
+            }
+            total_steps = type_defaults.get(doc_data.get('type', ''), 5)
+        else:
+            try:
+                total_steps = int(total_steps)
+            except (ValueError, TypeError):
+                logger.warning(f"Valeur non numérique détectée pour total_steps: {total_steps}")
+                total_steps = 5
+        
         progress = int((current_step / total_steps) * 100) if total_steps > 0 else 0
         
         # Mapper le statut Firestore vers le format frontend
@@ -69,7 +92,11 @@ def transform_firestore_to_frontend(doc_data, doc_id):
         
         # Générer un nom descriptif basé sur le type et la période
         perimetre = doc_data.get('perimetre', {})
+        if not isinstance(perimetre, dict):
+            perimetre = {}
         periode = perimetre.get('periode', 'Période inconnue')
+        if not isinstance(periode, str):
+            periode = str(periode) if periode is not None else 'Période inconnue'
         
         name_mapping = {
             'tva': f'Déclaration TVA {periode}',
@@ -104,6 +131,10 @@ def transform_firestore_to_frontend(doc_data, doc_id):
         
     except Exception as e:
         logger.error(f"Erreur transformation données: {e}")
+        logger.error(f"Document ID: {doc_id}")
+        logger.error(f"Données document: {doc_data}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return None
 
 def calculate_deadline_from_period(periode, declaration_type):

@@ -14,9 +14,9 @@ import {
   Plus
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getSettings } from '../services/settingsService';
 import { useProcedures, ProceduresService, type Procedure } from '../services/proceduresService';
 import { useAlerts, alertService, type Alert } from '../services/alertService';
+import { useAuth } from '../contexts/AuthContext';
 
 export function Dashboard({ 
   onNewDeclaration,
@@ -27,6 +27,7 @@ export function Dashboard({
   onNavigateToProcedures?: () => void;
   onNavigateToAlerts?: () => void;
 }) {
+  const { currentUser } = useAuth();
   const [userFirstName, setUserFirstName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -36,28 +37,21 @@ export function Dashboard({
   const { procedures: allProcedures } = useProcedures();
   const { alerts: allAlerts } = useAlerts(false);
 
-  // Charger les données depuis Firestore
+  // Charger les données depuis le contexte d'auth
   useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const companyId = "demo_company"; // TODO: Récupérer depuis le contexte d'authentification
-        const settings = await getSettings(companyId);
+    if (!currentUser) {
+      setIsLoading(false);
+      return;
+    }
 
-        if (settings) {
-          setUserFirstName(settings.representative.prenom || 'Utilisateur');
-          setCompanyName(settings.company_info.nom || 'Votre entreprise');
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-        setUserFirstName('Utilisateur');
-        setCompanyName('Votre entreprise');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadUserData();
-  }, []);
+    // Extraire le prénom depuis l'email (avant le @)
+    const emailPrefix = currentUser.email.split('@')[0];
+    const firstName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+    
+    setUserFirstName(firstName);
+    setCompanyName(currentUser.companyId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
+    setIsLoading(false);
+  }, [currentUser]);
 
   // Calculer les vraies statistiques
   const demarchesEnCours = allProcedures.filter(proc => proc.status === 'inprogress').length;
@@ -132,6 +126,62 @@ export function Dashboard({
     })
     .sort((a, b) => a.daysUntil - b.daysUntil) // Trier par échéance la plus proche
     .slice(0, 3); // Prendre les 3 plus urgentes
+
+  // Calculer la progression mensuelle basée sur les vraies données
+  const calculateMonthlyProgress = () => {
+    if (allProcedures.length === 0) {
+      return {
+        fiscal: { completed: 0, total: 0, percentage: 0 },
+        social: { completed: 0, total: 0, percentage: 0 },
+        juridique: { completed: 0, total: 0, percentage: 0 }
+      };
+    }
+
+    const fiscalProcedures = allProcedures.filter(proc => 
+      proc.type === 'Fiscal' || proc.firestore_type === 'tva'
+    );
+    const socialProcedures = allProcedures.filter(proc => 
+      proc.type === 'Social' || proc.firestore_type === 'urssaf'
+    );
+    const juridiqueProcedures = allProcedures.filter(proc => 
+      proc.type === 'Juridique' || proc.firestore_type === 'aides'
+    );
+
+    const calculatePercentage = (procedures: Procedure[]) => {
+      if (procedures.length === 0) return 0;
+      const totalProgress = procedures.reduce((sum, proc) => sum + proc.progress, 0);
+      return Math.round(totalProgress / procedures.length);
+    };
+
+    return {
+      fiscal: {
+        completed: fiscalProcedures.filter(p => p.status === 'done').length,
+        total: fiscalProcedures.length,
+        percentage: calculatePercentage(fiscalProcedures)
+      },
+      social: {
+        completed: socialProcedures.filter(p => p.status === 'done').length,
+        total: socialProcedures.length,
+        percentage: calculatePercentage(socialProcedures)
+      },
+      juridique: {
+        completed: juridiqueProcedures.filter(p => p.status === 'done').length,
+        total: juridiqueProcedures.length,
+        percentage: calculatePercentage(juridiqueProcedures)
+      }
+    };
+  };
+
+  const monthlyProgress = calculateMonthlyProgress();
+
+  // Calculer le pourcentage global de l'entreprise
+  const calculateOverallProgress = () => {
+    if (allProcedures.length === 0) return 0;
+    const totalProgress = allProcedures.reduce((sum, proc) => sum + proc.progress, 0);
+    return Math.round(totalProgress / allProcedures.length);
+  };
+
+  const overallProgress = calculateOverallProgress();
 
   // Préparer les alertes récentes à partir des vraies données
   const recentAlerts = allAlerts
@@ -279,16 +329,6 @@ export function Dashboard({
                 ))
               )}
             </div>
-            {allProcedures.length > 0 && (
-              <div className="mt-6 p-4 rounded-xl bg-green-50 border border-green-200">
-                <p className="text-sm font-medium text-green-900">
-                  🎉 Bonne nouvelle ! <span className="font-bold">{demarchesCompletes} démarches sur {allProcedures.length}</span> sont déjà faites
-                  {demarchesCompletes === allProcedures.length && (
-                    <span> - Tout est à jour ! 🎯</span>
-                  )}
-                </p>
-              </div>
-            )}
           </Card>
 
           {/* Activity Progress */}
@@ -299,36 +339,89 @@ export function Dashboard({
               </div>
               <h3 className="text-xl tracking-tight font-semibold">Progression mensuelle</h3>
             </div>
-            <div className="space-y-6">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-700">Conformité fiscale</span>
-                  <span className="text-lg font-bold text-blue-600">85%</span>
-                </div>
-                <Progress value={85} className="h-3" />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-700">Obligations RH</span>
-                  <span className="text-lg font-bold text-green-600">92%</span>
-                </div>
-                <Progress value={92} className="h-3" />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-700">Démarches juridiques</span>
-                  <span className="text-lg font-bold text-orange-600">70%</span>
-                </div>
-                <Progress value={70} className="h-3" />
-              </div>
-              <div className="pt-6 border-t border-gray-200">
-                <div className="p-4 rounded-xl bg-purple-50 border border-purple-200">
-                  <p className="text-sm font-medium text-purple-900">
-                    🎯 Vous êtes en avance sur <span className="font-bold text-lg">78%</span> des entreprises similaires
-                  </p>
+            {allProcedures.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="p-4 rounded-xl bg-blue-100">
+                    <span className="text-3xl">📊</span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">Aucune donnée disponible</p>
+                    <p className="text-sm text-gray-600">Ajoutez des démarches pour voir la progression</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700">
+                      Conformité fiscale
+                      {monthlyProgress.fiscal.total > 0 && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          ({monthlyProgress.fiscal.completed}/{monthlyProgress.fiscal.total})
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-lg font-bold text-blue-600">
+                      {monthlyProgress.fiscal.total === 0 ? 'N/A' : `${monthlyProgress.fiscal.percentage}%`}
+                    </span>
+                  </div>
+                  <Progress 
+                    value={monthlyProgress.fiscal.total === 0 ? 0 : monthlyProgress.fiscal.percentage} 
+                    className="h-3" 
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700">
+                      Obligations RH
+                      {monthlyProgress.social.total > 0 && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          ({monthlyProgress.social.completed}/{monthlyProgress.social.total})
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-lg font-bold text-green-600">
+                      {monthlyProgress.social.total === 0 ? 'N/A' : `${monthlyProgress.social.percentage}%`}
+                    </span>
+                  </div>
+                  <Progress 
+                    value={monthlyProgress.social.total === 0 ? 0 : monthlyProgress.social.percentage} 
+                    className="h-3" 
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700">
+                      Démarches juridiques
+                      {monthlyProgress.juridique.total > 0 && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          ({monthlyProgress.juridique.completed}/{monthlyProgress.juridique.total})
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-lg font-bold text-orange-600">
+                      {monthlyProgress.juridique.total === 0 ? 'N/A' : `${monthlyProgress.juridique.percentage}%`}
+                    </span>
+                  </div>
+                  <Progress 
+                    value={monthlyProgress.juridique.total === 0 ? 0 : monthlyProgress.juridique.percentage} 
+                    className="h-3" 
+                  />
+                </div>
+                <div className="pt-6 border-t border-gray-200">
+                  <div className="p-4 rounded-xl bg-purple-50 border border-purple-200">
+                    <p className="text-sm font-medium text-purple-900">
+                      🎯 Progression globale : <span className="font-bold text-lg">{overallProgress}%</span>
+                      <span className="block text-xs mt-1 text-purple-700">
+                        Basé sur {allProcedures.length} démarches en cours
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
 

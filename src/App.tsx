@@ -7,6 +7,8 @@ import {Settings} from './components/Settings';
 import {AIAssistant} from './components/AIAssistant';
 import {NewDeclaration} from './components/NewDeclaration';
 import {Navigation} from './components/Navigation';
+import {AuthProvider} from './contexts/AuthContext';
+import {AuthGuard} from './components/auth/AuthGuard';
 import {Bell, Bot, Eye, FolderOpen, LayoutDashboard, Settings as SettingsIcon} from 'lucide-react';
 
 export type Page = 'dashboard' | 'alert' | 'procedures' | 'watch' | 'settings' | 'assistant' | 'new-declaration';
@@ -15,11 +17,6 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [selectedAlertId, setSelectedAlertId] = useState<string>('alert-1');
   const [selectedDeclarationId, setSelectedDeclarationId] = useState<string | null>(null);
-  // TODO: Récupérer depuis le contexte d'authentification
-  const currentUser = {
-        uid: 'test_user',
-        companyId: 'demo_company'
-  };
 
   const renderPage = () => {
     switch (currentPage) {
@@ -62,8 +59,6 @@ export default function App() {
         return (
           <NewDeclaration 
             onClose={() => setCurrentPage('dashboard')} 
-            userId="test_user"
-            companyId="demo_company"
           />
         );
       default:
@@ -82,15 +77,19 @@ export default function App() {
     ];
 
     return (
-        <div className="h-screen w-screen flex bg-gradient-to-br from-blue-50 via-white to-purple-50">
-            <Navigation
-                currentPage={currentPage}
-                onNavigate={setCurrentPage}
-                items={navItems}
-            />
-            <main className="flex-1 overflow-auto">
-                {renderPage()}
-            </main>
-        </div>
+        <AuthProvider>
+            <AuthGuard>
+                <div className="h-screen w-screen flex bg-gradient-to-br from-blue-50 via-white to-purple-50">
+                    <Navigation
+                        currentPage={currentPage}
+                        onNavigate={setCurrentPage}
+                        items={navItems}
+                    />
+                    <main className="flex-1 overflow-auto">
+                        {renderPage()}
+                    </main>
+                </div>
+            </AuthGuard>
+        </AuthProvider>
     );
 }
