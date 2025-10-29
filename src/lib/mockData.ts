@@ -26,7 +26,7 @@ export const alerts: Alert[] = [
     type: 'urgent',
     summary: 'Applicable dès novembre 2025. Taux modifié pour les entreprises < 50 salariés.',
     sourceUrl: 'https://service-public.fr/urssaf-2025',
-    aiAnalysis: 'Cette mesure pourrait impacter vos cotisations sociales dès le prochain trimestre. Simplify peut vous rappeler cette échéance et calculer l\'impact estimé sur votre trésorerie.',
+    aiAnalysis: 'Cette mesure pourrait impacter vos cotisations sociales dès le prochain trimestre. Optimious peut vous rappeler cette échéance et calculer l\'impact estimé sur votre trésorerie.',
     detectedDate: '2025-10-10',
     processedDate: '2025-10-12',
     status: 'pending',
