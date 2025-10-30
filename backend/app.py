@@ -93,9 +93,8 @@ app.register_blueprint(veille_bp, url_prefix='/veille')
 
 # Modules à ajouter par les autres développeurs :
 # app.register_blueprint(settings_bp, url_prefix='/settings')
-# app.register_blueprint(procedures_bp, url_prefix='/procedures')
-# Module Procédures/Démarches (maintenant implémenté)
-app.register_blueprint(procedures_bp, url_prefix='/procedures')
+# Module Procédures/Démarches (maintenant implémenté) 
+app.register_blueprint(procedures_bp, url_prefix='/api/procedures')
 
 # Modules à ajouter par les autres développeurs :
 # app.register_blueprint(settings_bp, url_prefix='/settings')
@@ -289,7 +288,7 @@ def not_found(error):
     return jsonify({
         "error": "Endpoint non trouvé",
         "message": "Vérifiez l'URL et le module demandé",
-        "available_endpoints": ["/health", "/alerts", "/veille", "/procedures"]
+        "available_endpoints": ["/health", "/alerts", "/veille", "/api/procedures"]
     }), 404
 
 @app.errorhandler(500)
@@ -317,7 +316,7 @@ if __name__ == '__main__':
     logger.info("  ✅ /alerts - Système d'alertes")
     logger.info("  ✅ /veille - Veille réglementaire")
     logger.info("  ⏳ /settings - Paramètres (à implémenter)")
-    logger.info("  ✅ /procedures - Système de démarches")
+    logger.info("  ✅ /api/procedures - Système de démarches")
     logger.info("  ⏳ /watch - À implémenter")
     logger.info("=" * 50)
 

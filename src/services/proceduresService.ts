@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { ENDPOINTS, apiRequest } from '../config/api';
 
 // Types pour les démarches
 export type ProcedureStatus = 'todo' | 'inprogress' | 'done';
@@ -117,7 +118,7 @@ export function useProcedures(userId?: string) {
       }
 
       const queryString = params.toString();
-      const url = queryString ? `/api/procedures/?${queryString}` : '/api/procedures/';
+      const url = queryString ? `${ENDPOINTS.procedures.list}/?${queryString}` : `${ENDPOINTS.procedures.list}/`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -175,7 +176,6 @@ export function useProcedures(userId?: string) {
  * Service principal pour les démarches
  */
 export class ProceduresService {
-  private static readonly BASE_URL = '/api/procedures';
 
   /**
    * Récupère toutes les démarches pour un utilisateur
@@ -190,7 +190,7 @@ export class ProceduresService {
       }
       
       const queryString = params.toString();
-      const url = queryString ? `${this.BASE_URL}/?${queryString}` : `${this.BASE_URL}/`;
+      const url = queryString ? `${ENDPOINTS.procedures.list}/?${queryString}` : `${ENDPOINTS.procedures.list}/`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -302,7 +302,7 @@ export class ProceduresService {
    */
   static async testConnection(): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await fetch(`${this.BASE_URL}/health`);
+      const response = await fetch(ENDPOINTS.procedures.health);
       const data = await response.json();
       
       return {

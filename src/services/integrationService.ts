@@ -7,7 +7,7 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
-const SAAS_API_URL = "https://saas-integrations-api-2hpsggoeja-uw.a.run.app";
+import { SAAS_API_URL } from '../config/api';
 
 export interface Integration {
   id: string;

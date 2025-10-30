@@ -56,7 +56,9 @@ export interface AnalyseVeilleResponse {
   alertes: AlerteVeille[];
 }
 
-const API_BASE_URL = 'http://localhost:8080/veille';
+import { ENDPOINTS } from '../config/api';
+
+const API_BASE_URL = ENDPOINTS.veille.base;
 
 /**
  * Normalise les données Firestore vers le format attendu par le frontend

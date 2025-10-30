@@ -73,3 +73,6 @@ dist/
 .dataconnect
 
 .vscode/
+.env.development
+.env.local
+.env.production

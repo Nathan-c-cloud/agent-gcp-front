@@ -6,7 +6,9 @@ import {Send, Sparkles} from 'lucide-react';
 import {chatMessages, suggestedQuestions} from '../lib/mockData';
 import {getSettings} from '../services/settingsService';
 
-const API_URL = "https://agent-client-478570587937.us-west1.run.app";
+import { AI_ASSISTANT_URL } from '../config/api';
+
+const API_URL = AI_ASSISTANT_URL;
 
 interface Message {
     role: 'user' | 'assistant';

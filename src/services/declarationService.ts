@@ -14,12 +14,10 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
+import { SAAS_API_URL } from '../config/api';
+
 // URLs des APIs
-// En développement, utilise le proxy Vite pour éviter les problèmes CORS
 const isDevelopment = import.meta.env.DEV;
-const SAAS_API_URL = isDevelopment
-  ? '/api/saas'
-  : 'https://us-west1-agent-gcp-f6005.cloudfunctions.net/saas-integrations-api';
 const PDF_GENERATOR_URL = isDevelopment
   ? '/api/pdf-generator'
   : 'https://pdf-generator-478570587937.us-west1.run.app';

@@ -1,0 +1,44 @@
+# Docker Compose pour tester l'app complète en local
+services:
+  # Backend Flask
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: agent-gcp-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - FLASK_ENV=development
+      - JWT_SECRET=dev-secret-key-change-in-production
+      - PORT=8080
+    volumes:
+      # Mount du service account pour les tests locaux
+      - ./backend/service-account-key.json:/app/service-account-key.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend React
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: agent-gcp-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  default:
+    name: agent-gcp-network
