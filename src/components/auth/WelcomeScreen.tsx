@@ -11,21 +11,21 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
   const [logoError, setLogoError] = useState(false);
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-blue-100 via-white to-purple-50">
-      <div className="flex flex-col items-center justify-center px-4 py-10 min-h-screen">
+    <div className="min-h-screen w-full bg-gradient-to-br from-blue-100 via-white to-purple-50 overflow-y-auto">
+      <div className="flex flex-col items-center justify-start px-4 py-8 min-h-screen">
         {/* Logo et titre principal */}
-        <div className="text-center mb-12">
-          <div className="flex justify-center mb-6">
+        <div className="text-center mb-8 w-full max-w-4xl">
+          <div className="flex justify-center mb-4">
             {!logoError ? (
               <img
                 src="/logo.svg"
                 alt="Logo RegleWatch"
-                className="h-14 w-auto"
+                className="h-16 w-16 object-contain"
                 onError={() => setLogoError(true)}
               />
             ) : (
-              <div className="h-14 w-14 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <Shield className="h-7 w-7 text-white" />
+              <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Shield className="h-8 w-8 text-white" />
               </div>
             )}
           </div>
@@ -34,13 +34,13 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
             Bienvenue sur <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">RegleWatch</span>
           </h1>
           
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
             Votre assistant intelligent pour la conformité réglementaire et la gestion des démarches administratives
           </p>
         </div>
 
         {/* Fonctionnalités principales */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 max-w-3xl w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 max-w-4xl w-full px-4">
           <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 h-12 w-12 bg-blue-600 rounded-full flex items-center justify-center">

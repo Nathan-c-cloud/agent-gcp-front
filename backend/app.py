@@ -126,42 +126,63 @@ def register():
         if '@' not in email:
             return jsonify({'error': 'Adresse e-mail invalide'}), 400
         
+        # Vérifier si l'utilisateur existe déjà
+        if db_client:
+            try:
+                existing_users = db_client.collection('users').where('email', '==', email).limit(1).get()
+                if len(list(existing_users)) > 0:
+                    return jsonify({'error': 'Un compte avec cet email existe déjà'}), 400
+            except Exception as e:
+                logger.error(f"❌ Erreur lors de la vérification de l'email: {e}")
+        
         # Générer un nouvel utilisateur et le sauvegarder dans Firestore
         import jwt
         import uuid
+        import bcrypt
         from datetime import datetime, timedelta, timezone
 
-        uid = uuid.uuid4().hex
-        # Simple companyId slug (pour la démo)
-        company_id = company_name.lower().replace(' ', '_')
+        # Générer un ID unique pour chaque utilisateur dans Firestore
+        unique_uid = uuid.uuid4().hex
+        
+        # Pour la démo, on retourne toujours test_user et demo_company dans le token
+        # pour que tous les utilisateurs partagent les mêmes données
+        demo_uid = 'test_user'
+        demo_company_id = 'demo_company'
+        
+        # Hasher le mot de passe avec bcrypt
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
         user_doc = {
-            'uid': uid,
+            'uid': unique_uid,
             'email': email,
-            'companyId': company_id,
+            'passwordHash': password_hash.decode('utf-8'),  # Stocker en string
+            'companyId': demo_company_id,
             'companyName': company_name,
+            'demoUserId': demo_uid,  # Pour référence
             'createdAt': datetime.now(timezone.utc)
         }
 
         # Essayer d'écrire dans Firestore si le client est disponible
         if db_client:
             try:
-                db_client.collection('users').document(uid).set(user_doc)
-                logger.info(f"✅ Nouvel utilisateur créé en Firestore: {uid} ({email})")
+                # Créer un document avec l'ID unique
+                db_client.collection('users').document(unique_uid).set(user_doc)
+                logger.info(f"✅ Nouvel utilisateur créé en Firestore: {unique_uid} ({email}) - Mapped to demo: {demo_uid}")
             except Exception as e:
-                logger.error(f"❌ Erreur écriture Firestore pour user {uid}: {e}")
+                logger.error(f"❌ Erreur écriture Firestore pour user {unique_uid}: {e}")
                 logger.error(f"   Type d'erreur: {type(e).__name__}")
                 logger.error(f"   Vérifiez les permissions IAM du service account")
-                # Pour la démo, on continue quand même et on retourne le token
-                # (l'utilisateur pourra se connecter mais ne sera pas persisté)
-                logger.warning(f"⚠️  Inscription continuée sans persistence (mode démo)")
+                return jsonify({'error': 'Erreur lors de la création du compte'}), 500
         else:
-            logger.warning('⚠️  db_client non initialisé : l\'utilisateur ne sera pas persisté en base')
+            logger.error('⚠️  db_client non initialisé')
+            return jsonify({'error': 'Service non disponible'}), 503
 
+        # Retourner test_user et demo_company dans le token pour que tout le monde partage les mêmes données
         token = jwt.encode({
-            'user_id': uid,
+            'user_id': demo_uid,
             'email': email,
-            'companyId': company_id,
+            'companyId': demo_company_id,
+            'real_uid': unique_uid,  # Garder trace de l'ID réel
             'exp': (datetime.now(timezone.utc) + timedelta(days=7)).timestamp()
         }, os.getenv('JWT_SECRET', 'votre-secret-jwt'), algorithm='HS256')
 
@@ -169,9 +190,9 @@ def register():
             'success': True,
             'token': token,
             'user': {
-                'uid': uid,
+                'uid': demo_uid,  # On retourne test_user pour la démo
                 'email': email,
-                'companyId': company_id
+                'companyId': demo_company_id  # On retourne demo_company pour la démo
             }
         }
 
@@ -196,28 +217,62 @@ def login():
         email = data['email'].strip().lower()
         password = data['password']
         
-        # Pour la démo, on génère directement un token sans vérification
+        # Vérifier que Firestore est disponible
+        if not db_client:
+            logger.error('⚠️  db_client non initialisé')
+            return jsonify({'error': 'Service non disponible'}), 503
+        
+        # Chercher l'utilisateur dans Firestore par email
         import jwt
+        import bcrypt
         from datetime import datetime, timedelta, timezone
+        
+        try:
+            users_query = db_client.collection('users').where('email', '==', email).limit(1).get()
+            users_list = list(users_query)
+            
+            if len(users_list) == 0:
+                return jsonify({'error': 'Email ou mot de passe incorrect'}), 401
+            
+            user_doc = users_list[0]
+            user_data = user_doc.to_dict()
+            
+            # Vérifier le mot de passe
+            stored_password_hash = user_data.get('passwordHash', '').encode('utf-8')
+            if not bcrypt.checkpw(password.encode('utf-8'), stored_password_hash):
+                return jsonify({'error': 'Email ou mot de passe incorrect'}), 401
+            
+            # Authentification réussie, générer le token
+            unique_uid = user_data['uid']
+            
+            # Pour la démo, on retourne toujours test_user et demo_company
+            demo_uid = 'test_user'
+            demo_company_id = 'demo_company'
+            
+            token = jwt.encode({
+                'user_id': demo_uid,
+                'email': email,
+                'companyId': demo_company_id,
+                'real_uid': unique_uid,  # Garder trace de l'ID réel
+                'exp': (datetime.now(timezone.utc) + timedelta(days=7)).timestamp()
+            }, os.getenv('JWT_SECRET', 'votre-secret-jwt'), algorithm='HS256')
 
-        token = jwt.encode({
-            'user_id': 'test_user',
-            'email': 'demo@example.com',
-            'companyId': 'demo_company',
-            'exp': (datetime.now(timezone.utc) + timedelta(days=7)).timestamp()
-        }, os.getenv('JWT_SECRET', 'votre-secret-jwt'), algorithm='HS256')
-
-        result = {
-            'success': True,
-            'token': token,
-            'user': {
-                'uid': 'test_user',
-                'email': 'demo@example.com',
-                'companyId': 'demo_company'
+            result = {
+                'success': True,
+                'token': token,
+                'user': {
+                    'uid': demo_uid,  # On retourne test_user pour la démo
+                    'email': email,
+                    'companyId': demo_company_id  # On retourne demo_company pour la démo
+                }
             }
-        }
-
-        return jsonify(result), 200
+            
+            logger.info(f"✅ Connexion réussie pour {email} (uid réel: {unique_uid}, démo: {demo_uid})")
+            return jsonify(result), 200
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur lors de la requête Firestore: {e}")
+            return jsonify({'error': 'Erreur lors de la connexion'}), 500
         
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
