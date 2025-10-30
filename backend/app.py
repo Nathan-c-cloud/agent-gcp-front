@@ -16,6 +16,7 @@ load_dotenv()
 from modules.alerts import alerts_bp
 from modules.veille import veille_bp
 from modules.procedures import procedures_bp  # Module des démarches maintenant disponible
+from modules.tasks import tasks_bp  # Module de gestion des tâches
 from modules.auth import auth_service
 # from modules.settings import settings_bp  # À ajouter par l'ami qui fait settings
 # from modules.watch import watch_bp  # À ajouter par l'ami qui fait watch
@@ -90,6 +91,9 @@ app.register_blueprint(alerts_bp, url_prefix='/alerts')
 
 # Module Veille
 app.register_blueprint(veille_bp, url_prefix='/veille')
+
+# Module Tâches
+app.register_blueprint(tasks_bp, url_prefix='/tasks')
 
 # Modules à ajouter par les autres développeurs :
 # app.register_blueprint(settings_bp, url_prefix='/settings')

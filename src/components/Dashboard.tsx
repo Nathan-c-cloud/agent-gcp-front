@@ -16,26 +16,43 @@ import {
 import { useState, useEffect } from 'react';
 import { useProcedures, ProceduresService, type Procedure } from '../services/proceduresService';
 import { useAlerts, alertService, type Alert } from '../services/alertService';
+import { tasksService, type Task } from '../services/tasksService';
 import { useAuth } from '../contexts/AuthContext';
 
 export function Dashboard({ 
   onNewDeclaration,
   onNavigateToProcedures,
-  onNavigateToAlerts
+  onNavigateToAlerts,
+  onNavigateToTasks
 }: { 
   onNewDeclaration: () => void;
   onNavigateToProcedures?: () => void;
   onNavigateToAlerts?: () => void;
+  onNavigateToTasks?: () => void;
 }) {
   const { currentUser } = useAuth();
   const [userFirstName, setUserFirstName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [tasks, setTasks] = useState<Task[]>([]);
   
   // Récupérer les vraies données des démarches et des alertes (sans filtrer par user_id)
   // Ne pas déclencher l'alert-engine depuis le Dashboard (seulement depuis AlertsList)
   const { procedures: allProcedures } = useProcedures();
   const { alerts: allAlerts } = useAlerts(false);
+  
+  // Charger les tâches
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const tasksData = await tasksService.getTasksByOrg('org_demo');
+        setTasks(tasksData);
+      } catch (error) {
+        console.error('Error loading tasks:', error);
+      }
+    };
+    loadTasks();
+  }, []);
 
   // Charger les données depuis le contexte d'auth
   useEffect(() => {
@@ -55,11 +72,14 @@ export function Dashboard({
 
   // Calculer les vraies statistiques
   const demarchesEnCours = allProcedures.filter(proc => proc.status === 'inprogress').length;
-  const demarchesCompletes = allProcedures.filter(proc => proc.status === 'done').length;
   const demarchesUrgentes = ProceduresService.countUrgent(allProcedures);
   
   // Calculer les vraies alertes
   const alertesCritiques = allAlerts.filter(alert => alert.severity === 'critical' || alert.severity === 'high').length;
+  
+  // Calculer les vraies tâches complétées
+  const tachesCompletes = tasks.filter(task => task.status === 'completed').length;
+  const tachesTotal = tasks.length;
   
   const stats = [
     {
@@ -70,7 +90,8 @@ export function Dashboard({
       icon: AlertCircle,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
-      iconBg: 'bg-red-500'
+      iconBg: 'bg-red-500',
+      onClick: onNavigateToAlerts
     },
     {
       label: 'Démarches en cours',
@@ -80,17 +101,19 @@ export function Dashboard({
       icon: Clock,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      iconBg: 'bg-orange-500'
+      iconBg: 'bg-orange-500',
+      onClick: onNavigateToProcedures
     },
     {
       label: 'Tâches complétées',
-      value: demarchesCompletes.toString(),
-      change: `${allProcedures.length} au total`,
+      value: tachesCompletes.toString(),
+      change: `${tachesTotal} au total`,
       trend: 'up',
       icon: CheckCircle2,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      iconBg: 'bg-green-500'
+      iconBg: 'bg-green-500',
+      onClick: onNavigateToTasks
     },
     {
       label: 'Documents traités',
@@ -246,6 +269,7 @@ export function Dashboard({
               <Card
                 key={index}
                 className="p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer rounded-2xl bg-white border border-gray-200"
+                onClick={stat.onClick}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className={`p-3 rounded-xl ${stat.iconBg}`}>

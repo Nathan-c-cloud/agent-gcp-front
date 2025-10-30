@@ -47,6 +47,15 @@ export const ENDPOINTS = {
     marquerLu: (alerteId: string) => `${API_BASE_URL}/veille/marquer-lu/${alerteId}`,
     news: `${API_BASE_URL}/veille/news`,
     updates: `${API_BASE_URL}/veille/updates`
+  },
+
+  // Tâches
+  tasks: {
+    base: `${API_BASE_URL}/tasks/`,
+    byOrg: (orgId: string) => `${API_BASE_URL}/tasks/org/${orgId}`,
+    byId: (taskId: string) => `${API_BASE_URL}/tasks/${taskId}`,
+    updateStatus: (taskId: string) => `${API_BASE_URL}/tasks/${taskId}/status`,
+    health: `${API_BASE_URL}/tasks/health`
   }
 };
 

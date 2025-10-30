@@ -6,12 +6,13 @@ import {RegulatoryWatch} from './components/RegulatoryWatch';
 import {Settings} from './components/Settings';
 import {AIAssistant} from './components/AIAssistant';
 import {NewDeclaration} from './components/NewDeclaration';
+import {Tasks} from './components/Tasks';
 import {Navigation} from './components/Navigation';
 import {AuthProvider} from './contexts/AuthContext';
 import {AuthGuard} from './components/auth/AuthGuard';
-import {Bell, Bot, Eye, FolderOpen, LayoutDashboard, Settings as SettingsIcon} from 'lucide-react';
+import {Bell, Bot, Eye, FolderOpen, LayoutDashboard, Settings as SettingsIcon, CheckSquare} from 'lucide-react';
 
-export type Page = 'dashboard' | 'alert' | 'procedures' | 'watch' | 'settings' | 'assistant' | 'new-declaration';
+export type Page = 'dashboard' | 'alert' | 'procedures' | 'watch' | 'tasks' | 'settings' | 'assistant' | 'new-declaration';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
@@ -29,6 +30,7 @@ export default function App() {
             }}
             onNavigateToProcedures={() => setCurrentPage('procedures')}
             onNavigateToAlerts={() => setCurrentPage('alert')}
+            onNavigateToTasks={() => setCurrentPage('tasks')}
           />
         );
       case 'alert':
@@ -51,6 +53,8 @@ export default function App() {
           setSelectedAlertId(id);
           setCurrentPage('alert');
         }} />;
+      case 'tasks':
+        return <Tasks />;
       case 'settings':
         return <Settings />;
       case 'assistant':
@@ -70,6 +74,7 @@ export default function App() {
     const navItems = [
         {id: 'dashboard' as Page, label: 'Tableau de bord', icon: LayoutDashboard},
         {id: 'alert' as Page, label: 'Alertes', icon: Bell},
+        {id: 'tasks' as Page, label: 'Tâches', icon: CheckSquare},
         {id: 'procedures' as Page, label: 'Démarches', icon: FolderOpen},
         {id: 'watch' as Page, label: 'Veille', icon: Eye},
         {id: 'assistant' as Page, label: 'Assistant IA', icon: Bot},
