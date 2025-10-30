@@ -10,13 +10,13 @@ COPY package*.json ./
 # Installer les dépendances (dev incluses pour le build)
 RUN npm ci
 
+# Copier .env.docker AVANT de copier le reste du code (pour que Vite le prenne en compte)
+COPY .env.docker .env.local
+
 # Copier le code source
 COPY . .
 
-# Renommer .env.production en .env.local pour le build
-COPY .env.production .env.local
-
-# Build de l'application
+# Build de l'application (Vite va utiliser .env.local)
 RUN npm run build
 
 # Stage de production avec nginx

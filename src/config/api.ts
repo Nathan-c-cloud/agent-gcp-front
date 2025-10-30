@@ -31,9 +31,20 @@ export const ENDPOINTS = {
     health: `${API_BASE_URL}/api/procedures/health`
   },
 
+  // Alertes
+  alerts: {
+    base: `${API_BASE_URL}/alerts/`,
+    trigger: `${API_BASE_URL}/alerts/trigger`,
+    health: `${API_BASE_URL}/alerts/health`,
+    config: `${API_BASE_URL}/alerts/config`
+  },
+
   // Veille réglementaire
   veille: {
     base: `${API_BASE_URL}/veille`,
+    company: (companyId: string) => `${API_BASE_URL}/veille/company/${companyId}`,
+    analyser: (companyId: string) => `${API_BASE_URL}/veille/analyser/${companyId}`,
+    marquerLu: (alerteId: string) => `${API_BASE_URL}/veille/marquer-lu/${alerteId}`,
     news: `${API_BASE_URL}/veille/news`,
     updates: `${API_BASE_URL}/veille/updates`
   }

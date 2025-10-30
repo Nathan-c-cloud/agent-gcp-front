@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { ENDPOINTS } from '../config/api';
 
 export interface Alert {
   id: string;
@@ -49,13 +50,11 @@ export interface HealthResponse {
 }
 
 class AlertService {
-  private baseUrl = '/api';
-
   /**
    * Vérifie la santé du backend
    */
   async healthCheck(): Promise<HealthResponse> {
-    const response = await fetch(`${this.baseUrl}/health`);
+    const response = await fetch(ENDPOINTS.alerts.health);
     if (!response.ok) {
       throw new Error(`Health check failed: ${response.status}`);
     }
@@ -78,7 +77,7 @@ class AlertService {
       params.set('ttl_override', ttlOverride.toString());
     }
 
-    const url = `${this.baseUrl}/alerts${params.toString() ? `?${params}` : ''}`;
+    const url = `${ENDPOINTS.alerts.base}${params.toString() ? `?${params}` : ''}`;
     const response = await fetch(url);
     
     if (!response.ok) {
@@ -92,7 +91,7 @@ class AlertService {
    * Ajoute une alerte mockée (développement uniquement)
    */
   async addMockAlert(alertData: Partial<Alert>): Promise<{ status: string; alert: Alert }> {
-    const response = await fetch(`${this.baseUrl}/alerts/mock`, {
+    const response = await fetch(`${ENDPOINTS.alerts.base}/mock`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -111,7 +110,7 @@ class AlertService {
    * Reset les alertes mockées aux valeurs par défaut (développement)
    */
   async resetMockAlerts(): Promise<{ status: string; message: string; count: number }> {
-    const response = await fetch(`${this.baseUrl}/alerts/reset`, {
+    const response = await fetch(`${ENDPOINTS.alerts.base}/reset`, {
       method: 'POST',
     });
 
@@ -210,7 +209,7 @@ class AlertService {
       }
       
       const queryString = params.toString();
-      const url = queryString ? `${this.baseUrl}/alerts/trigger?${queryString}` : `${this.baseUrl}/alerts/trigger`;
+      const url = queryString ? `${ENDPOINTS.alerts.trigger}?${queryString}` : ENDPOINTS.alerts.trigger;
       
       // Si taskId est fourni, mode single task (POST avec body)
       const body = (options.taskId || options.task) ? {

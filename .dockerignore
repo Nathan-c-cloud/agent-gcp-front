@@ -21,8 +21,8 @@ README.md
 .env.local
 .env.development
 .env.test
-# Garder .env.production pour le build Docker
-# .env.production
+.env.production
+# Tous les .env* sont ignorés, on utilisera .env.docker copié explicitement dans le Dockerfile
 
 # IDE files
 .vscode/
