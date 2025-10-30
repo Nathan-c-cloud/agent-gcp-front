@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { ENDPOINTS } from '../config/api';
 
 export interface AuthUser {
   uid: string;
@@ -34,7 +35,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   async function register(email: string, password: string, companyName: string) {
     try {
-      const response = await fetch('http://localhost:8080/auth/register', {
+      const response = await fetch(ENDPOINTS.auth.register, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,7 +71,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   async function login(email: string, password: string) {
     try {
-      const response = await fetch('http://localhost:8080/auth/login', {
+      const response = await fetch(ENDPOINTS.auth.login, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

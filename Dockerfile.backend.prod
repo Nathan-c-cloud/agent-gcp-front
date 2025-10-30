@@ -1,0 +1,33 @@
+# Production Dockerfile pour le backend
+FROM python:3.13-slim
+
+# Variables d'environnement pour Cloud Run
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
+ENV GOOGLE_APPLICATION_CREDENTIALS=/app/service-account-key.json
+
+WORKDIR /app
+
+# Installer les dépendances système nécessaires
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installer les dépendances Python
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copier le code de l'application
+COPY backend/ .
+
+# Créer un utilisateur non-root pour la sécurité
+RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
+USER appuser
+
+# Exposer le port 8080 (requis par Cloud Run)
+EXPOSE 8080
+
+# Commande de démarrage
+CMD ["python", "app.py"]

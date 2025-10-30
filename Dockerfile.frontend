@@ -1,0 +1,35 @@
+# Dockerfile pour le Frontend React/Vite
+FROM node:20-alpine AS build
+
+# Définir le répertoire de travail
+WORKDIR /app
+
+# Copier les fichiers de dépendances
+COPY package*.json ./
+
+# Installer les dépendances (dev incluses pour le build)
+RUN npm ci
+
+# Copier .env.docker AVANT de copier le reste du code (pour que Vite le prenne en compte)
+COPY .env.docker .env.local
+
+# Copier le code source
+COPY . .
+
+# Build de l'application (Vite va utiliser .env.local)
+RUN npm run build
+
+# Stage de production avec nginx
+FROM nginx:alpine
+
+# Copier les fichiers buildés vers nginx
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Copier la configuration nginx personnalisée
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Exposer le port 80
+EXPOSE 80
+
+# Démarrer nginx
+CMD ["nginx", "-g", "daemon off;"]
