@@ -269,33 +269,23 @@ export function RegulatoryWatch({ }: RegulatoryWatchProps) {
       <div className="max-w-7xl mx-auto relative">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="relative p-3 rounded-xl bg-white shadow-lg">
-              <img 
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-blue-100 to-purple-100 shadow-lg">
+              <img
                 src="/img.png" 
                 alt="Veille Icon" 
-                className="size-7 object-contain relative z-10"
-                style={{ filter: 'drop-shadow(0 0 3px rgba(37, 99, 235, 0.4))' }}
+                className="w-12 h-12 object-contain"
+                style={{ filter: 'drop-shadow(0 0 2px rgba(37, 99, 235, 0.3))' }}
               />
-              <div className="absolute inset-0 bg-blue-400 rounded-xl blur-lg opacity-40 animate-pulse" />
             </div>
-            <h1 className="tracking-tight">Veille réglementaire complète</h1>
+            <h1 className="text-3xl tracking-tight font-bold">Veille réglementaire</h1>
           </div>
-          <div className="h-1.5 w-48 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full mb-4 shadow-lg" />
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Sparkles className="size-4 text-blue-500" />
-            <p className="font-medium">
-              Mise à jour quotidienne • Dernière actualisation : {new Date().toLocaleDateString('fr-FR', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
-              })}
-            </p>
-          </div>
+          <div className="h-1.5 w-40 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full mb-4 shadow-lg" />
+        </div>
 
-          {/* Filters */}
-          <div className="flex gap-3 flex-wrap mt-6">
-            <div className="flex gap-2">
+        {/* Filters */}
+        <div className="flex gap-3 flex-wrap mb-6">
+          <div className="flex gap-2">
               <Button
                 variant={filterTheme === 'all' ? 'default' : 'outline'}
                 size="sm"
@@ -336,11 +326,11 @@ export function RegulatoryWatch({ }: RegulatoryWatchProps) {
               >
                 🎁 Aides
               </Button>
-            </div>
+          </div>
 
-            <div className="w-px bg-gray-300" />
+          <div className="w-px bg-gray-300" />
 
-            <div className="flex gap-2">
+          <div className="flex gap-2">
               <Button
                 variant={filterPeriod === '7' ? 'default' : 'outline'}
                 size="sm"
@@ -357,7 +347,6 @@ export function RegulatoryWatch({ }: RegulatoryWatchProps) {
               >
                 30 jours
               </Button>
-            </div>
           </div>
         </div>
 

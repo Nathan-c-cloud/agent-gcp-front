@@ -59,7 +59,7 @@ export function Procedures({
               )}
             </div>
             <div className="flex gap-2">
-              <Button 
+              <Button
                 onClick={refresh}
                 variant="outline"
                 className="gap-2 shadow-lg transition-all hover:scale-105 rounded-xl px-4 h-12"
@@ -68,7 +68,7 @@ export function Procedures({
                 <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
                 Actualiser
               </Button>
-              <Button 
+              <Button
                 onClick={onNewDeclaration}
                 className="gap-2 bg-green-600 hover:bg-green-700 shadow-lg transition-all hover:scale-105 rounded-xl px-6 h-12"
               >
@@ -78,7 +78,7 @@ export function Procedures({
             </div>
           </div>
           <div className="h-1.5 w-40 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full mb-4 shadow-lg" />
-          
+
           {error && (
             <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 flex items-center gap-3">
               <AlertCircle className="size-5 text-red-600" />
