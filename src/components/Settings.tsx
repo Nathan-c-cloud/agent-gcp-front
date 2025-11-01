@@ -301,15 +301,14 @@ export function Settings() {
       <div className="absolute bottom-40 left-20 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl" />
 
       <div className="max-w-5xl mx-auto space-y-8 relative">
-        <div>
-          <div className="flex items-center gap-3 mb-3">
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
             <div className="p-2 rounded-xl bg-gradient-to-br from-blue-100 to-purple-100 shadow-lg">
               <span className="text-3xl">⚙️</span>
             </div>
-            <h1 className="tracking-tight">Paramètres</h1>
+            <h1 className="text-3xl tracking-tight font-bold">Paramètres</h1>
           </div>
-          <div className="h-1.5 w-48 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full mb-2 shadow-lg" />
-          <p className="text-muted-foreground font-medium">Configurez les informations de votre entreprise et vos préférences</p>
+          <div className="h-1.5 w-40 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full mb-4 shadow-lg" />
         </div>
 
         <Tabs defaultValue="company" className="space-y-6">

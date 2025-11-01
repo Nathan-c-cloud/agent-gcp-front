@@ -1,5 +1,7 @@
 """
-Module d'authentification pour la démo RegleWatch
+"""
+Module d'authentification pour la démo Optimious
+"""
 Gère l'inscription et la connexion sans Firebase Auth
 """
 

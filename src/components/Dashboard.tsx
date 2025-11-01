@@ -1,23 +1,13 @@
-import { Card } from './ui/card';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Progress } from './ui/progress';
-import { 
-  TrendingUp, 
-  AlertCircle, 
-  CheckCircle2, 
-  Clock, 
-  FileText,
-  ArrowUpRight,
-  Sparkles,
-  Zap,
-  Plus
-} from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { useProcedures, ProceduresService, type Procedure } from '../services/proceduresService';
-import { useAlerts, alertService, type Alert } from '../services/alertService';
-import { tasksService, type Task } from '../services/tasksService';
-import { useAuth } from '../contexts/AuthContext';
+import {Card} from './ui/card';
+import {Badge} from './ui/badge';
+import {Button} from './ui/button';
+import {Progress} from './ui/progress';
+import {AlertCircle, ArrowUpRight, CheckCircle2, Clock, FileText, Plus, Sparkles, TrendingUp, Zap} from 'lucide-react';
+import {useEffect, useState} from 'react';
+import {type Procedure, ProceduresService, useProcedures} from '../services/proceduresService';
+import {alertService, useAlerts} from '../services/alertService';
+import {type Task, tasksService} from '../services/tasksService';
+import {useAuth} from '../contexts/AuthContext';
 
 export function Dashboard({ 
   onNewDeclaration,
@@ -240,7 +230,7 @@ export function Dashboard({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl tracking-tight mb-2">
-              {isLoading ? 'Chargement...' : `Bonjour ${userFirstName} 👋`}
+              {isLoading ? 'Chargement...' : `Bonjour ${userFirstName}`}
             </h1>
             <p className="text-gray-600 text-lg">
               Voici les nouveautés réglementaires du jour

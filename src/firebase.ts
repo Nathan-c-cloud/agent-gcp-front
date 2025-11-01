@@ -19,7 +19,21 @@ const firebaseConfig = {
 if (!firebaseConfig.apiKey) {
     console.error('❌ Variables d\'environnement Firebase manquantes !');
     console.error('Vérifiez que .env.local existe et contient les variables VITE_FIREBASE_*');
+    console.error('\n📝 Variables requises :');
+    console.error('  - VITE_FIREBASE_API_KEY');
+    console.error('  - VITE_FIREBASE_AUTH_DOMAIN');
+    console.error('  - VITE_FIREBASE_PROJECT_ID');
+    console.error('  - VITE_FIREBASE_STORAGE_BUCKET');
+    console.error('  - VITE_FIREBASE_MESSAGING_SENDER_ID');
+    console.error('  - VITE_FIREBASE_APP_ID');
+    console.error('\n🔧 Solution rapide : npm run setup');
+    throw new Error('Configuration Firebase incomplète');
 }
+
+console.log('✅ Configuration Firebase chargée :', {
+    projectId: firebaseConfig.projectId,
+    authDomain: firebaseConfig.authDomain
+});
 
 // ============================================
 // INITIALISATION FIREBASE

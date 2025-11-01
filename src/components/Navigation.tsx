@@ -44,21 +44,9 @@ export function Navigation({currentPage, onNavigate, items}: NavigationProps) {
 
     return (
         <nav className="w-72 h-full bg-white border-r border-gray-200 p-8 flex flex-col gap-2">
-            <div className="mb-10">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="relative size-10 rounded-xl flex items-center justify-center">
-                        <img 
-                            src="/logo.svg" 
-                            alt="Optimious Logo" 
-                            className="w-full h-full object-contain"
-                        />
-                    </div>
-                    <div>
-                        <h2 className="text-xl tracking-tight font-bold text-gray-900">Optimious</h2>
-                    </div>
-                </div>
-                <p className="text-xs text-gray-600 ml-[52px] tracking-wide uppercase font-semibold">Copilote
-                    administratif</p>
+            <div className="mb-10 text-center">
+                <h2 className="text-2xl tracking-tight font-bold text-gray-900 mb-2">Optimious</h2>
+                <p className="text-xs text-gray-600 tracking-wide uppercase font-semibold">Anticipez Optimisez Réussissez</p>
             </div>
 
 

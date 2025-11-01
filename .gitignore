@@ -75,4 +75,5 @@ dist/
 .vscode/
 .env.development
 .env.local
+.env.local.backup.*
 .env.production

@@ -21,10 +21,11 @@ export function AuthForm({ onBack }: AuthFormProps) {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [logoError, setLogoError] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    
+
     if (!email || !password) {
       setError('Veuillez remplir tous les champs');
       return;
@@ -59,7 +60,7 @@ export function AuthForm({ onBack }: AuthFormProps) {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    
+
     if (!email || !password || !companyName) {
       setError('Veuillez remplir tous les champs');
       return;
@@ -119,9 +120,18 @@ export function AuthForm({ onBack }: AuthFormProps) {
 
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <div className="h-12 w-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-md">
-            <Shield className="h-6 w-6 text-white" />
-          </div>
+          {!logoError ? (
+            <img
+              src="/logo.svg"
+              alt="Logo Optimious"
+              className="h-16 w-16 object-contain"
+              onError={() => setLogoError(true)}
+            />
+          ) : (
+            <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <Shield className="h-8 w-8 text-white" />
+            </div>
+          )}
         </div>
 
         {/* Formulaires d'authentification */}
@@ -139,7 +149,7 @@ export function AuthForm({ onBack }: AuthFormProps) {
                   Connexion
                 </CardTitle>
                 <CardDescription>
-                  Connectez-vous à votre compte RegleWatch
+                  Connectez-vous à votre compte Optimious
                 </CardDescription>
               </CardHeader>
 
@@ -202,7 +212,7 @@ export function AuthForm({ onBack }: AuthFormProps) {
                 <CardFooter className="py-3">
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-md"
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-black font-semibold shadow-md"
                     disabled={loading}
                   >
                     {loading ? 'Connexion...' : 'Se connecter'}
@@ -218,7 +228,7 @@ export function AuthForm({ onBack }: AuthFormProps) {
                   Inscription
                 </CardTitle>
                 <CardDescription>
-                  Créez votre compte RegleWatch
+                  Créez votre compte Optimious
                 </CardDescription>
               </CardHeader>
 
@@ -300,7 +310,7 @@ export function AuthForm({ onBack }: AuthFormProps) {
                 <CardFooter className="py-3">
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-md"
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-black font-semibold shadow-md"
                     disabled={loading}
                   >
                     {loading ? 'Création du compte...' : 'Créer mon compte'}
@@ -319,3 +329,4 @@ export function AuthForm({ onBack }: AuthFormProps) {
     </div>
   );
 }
+

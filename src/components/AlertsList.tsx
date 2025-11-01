@@ -2,14 +2,13 @@
  * Composant AlertsList - Affiche la liste des alertes depuis le backend
  */
 
-import { useState } from 'react';
-import { useAlerts } from '../services/alertService';
-import { AlertDetail } from './AlertDetail';
-import AlertAdapter from '../services/alertAdapter';
-import { Card } from './ui/card';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { RefreshCw, Clock, AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import {useState} from 'react';
+import {useAlerts} from '../services/alertService';
+import {AlertDetail} from './AlertDetail';
+import {Card} from './ui/card';
+import {Badge} from './ui/badge';
+import {Button} from './ui/button';
+import {AlertTriangle, CheckCircle, Info} from 'lucide-react';
 
 export function AlertsList() {
   const { alerts: backendAlerts, loading, error, metadata, triggered, trigger_mode, refreshAlerts } = useAlerts();
@@ -35,127 +34,96 @@ export function AlertsList() {
 
   // Affichage de la liste des alertes
   return (
-    <div className="min-h-full bg-gradient-to-b from-[#F8FAFF] to-white">
-      {/* Header */}
-      <div className="bg-white border-b shadow-sm p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">🚨 Alertes Réglementaires</h1>
-              <p className="text-gray-600 mt-1">
-                Suivez vos échéances et obligations en temps réel
-              </p>
+    <div className="min-h-full bg-gray-50 p-12 animate-in fade-in duration-500 relative overflow-hidden">
+      <div className="max-w-7xl mx-auto relative">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-blue-100 to-purple-100 shadow-lg">
+              <span className="text-3xl">🚨</span>
             </div>
-            <div className="flex items-center gap-4">
-              {metadata && (
-                <div className="text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <Clock className="size-4" />
-                    <span>
-                      Dernière mise à jour: {
-                        metadata.last_refresh > 0 
-                          ? new Date(metadata.last_refresh * 1000).toLocaleTimeString('fr-FR')
-                          : 'Jamais'
-                      }
-                    </span>
-                  </div>
-                  {metadata.mode === 'local_development' && (
-                    <Badge variant="secondary" className="mt-1">
-                      Mode développement
-                    </Badge>
-                  )}
-                </div>
-              )}
-              <Button 
-                onClick={refreshAlerts}
-                variant="outline"
-                disabled={loading}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
-                Actualiser
-              </Button>
-            </div>
+            <h1 className="text-3xl tracking-tight font-bold">Alertes</h1>
           </div>
+          <div className="h-1.5 w-40 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full mb-4 shadow-lg" />
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Loading State */}
-        {loading && (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Chargement des alertes...</p>
-          </div>
-        )}
+        {/* Content */}
+        <div className="max-w-7xl mx-auto p-6">
+          {/* Loading State */}
+          {loading && (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Chargement des alertes...</p>
+            </div>
+          )}
 
-        {/* Error State */}
-        {error && (
-          <Card className="p-6 border-red-200 bg-red-50">
-            <div className="flex items-center gap-3 text-red-700">
-              <AlertTriangle className="size-5" />
-              <div>
-                <h3 className="font-semibold">Erreur de chargement</h3>
-                <p className="text-sm mt-1">{error}</p>
-                <Button 
-                  onClick={refreshAlerts}
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 border-red-300 hover:bg-red-100"
-                >
-                  Réessayer
-                </Button>
+          {/* Error State */}
+          {error && (
+            <Card className="p-6 border-red-200 bg-red-50">
+              <div className="flex items-center gap-3 text-red-700">
+                <AlertTriangle className="size-5" />
+                <div>
+                  <h3 className="font-semibold">Erreur de chargement</h3>
+                  <p className="text-sm mt-1">{error}</p>
+                  <Button
+                    onClick={refreshAlerts}
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 border-red-300 hover:bg-red-100"
+                  >
+                    Réessayer
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Empty State */}
+          {!loading && !error && backendAlerts.length === 0 && (
+            <Card className="p-12 text-center">
+              <CheckCircle className="size-16 mx-auto text-green-500 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Aucune alerte active
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Toutes vos obligations sont à jour ! Nous vous notifierons dès qu'une nouvelle échéance approchera.
+              </p>
+              <Button onClick={refreshAlerts} variant="outline">
+                Vérifier les mises à jour
+              </Button>
+            </Card>
+          )}
+
+          {/* Alerts List */}
+          {!loading && backendAlerts.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {backendAlerts.length} alerte{backendAlerts.length > 1 ? 's' : ''} active{backendAlerts.length > 1 ? 's' : ''}
+                </h2>
+                {metadata && (
+                  <div className="text-sm text-gray-500">
+                    {triggered && trigger_mode && (
+                      <Badge variant={trigger_mode === 'sync' ? 'default' : 'secondary'}>
+                        Actualisé ({trigger_mode})
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid gap-4">
+                {backendAlerts.map((alert) => (
+                  <AlertCard
+                    key={alert.id}
+                    alert={alert}
+                    onClick={() => setSelectedAlertId(alert.id)}
+                  />
+                ))}
               </div>
             </div>
-          </Card>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && backendAlerts.length === 0 && (
-          <Card className="p-12 text-center">
-            <CheckCircle className="size-16 mx-auto text-green-500 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Aucune alerte active
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Toutes vos obligations sont à jour ! Nous vous notifierons dès qu'une nouvelle échéance approchera.
-            </p>
-            <Button onClick={refreshAlerts} variant="outline">
-              Vérifier les mises à jour
-            </Button>
-          </Card>
-        )}
-
-        {/* Alerts List */}
-        {!loading && backendAlerts.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {backendAlerts.length} alerte{backendAlerts.length > 1 ? 's' : ''} active{backendAlerts.length > 1 ? 's' : ''}
-              </h2>
-              {metadata && (
-                <div className="text-sm text-gray-500">
-                  {triggered && trigger_mode && (
-                    <Badge variant={trigger_mode === 'sync' ? 'default' : 'secondary'}>
-                      Actualisé ({trigger_mode})
-                    </Badge>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="grid gap-4">
-              {backendAlerts.map((alert) => (
-                <AlertCard 
-                  key={alert.id}
-                  alert={alert}
-                  onClick={() => setSelectedAlertId(alert.id)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
